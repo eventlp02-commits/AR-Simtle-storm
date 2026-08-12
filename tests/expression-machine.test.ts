@@ -59,6 +59,29 @@ describe("ExpressionMachine", () => {
     expect(feed(machine, smile, 200, 250).state).toBe("SMILE");
   });
 
+  it("recognizes a gentle smile without requiring an exaggerated expression", () => {
+    const machine = new ExpressionMachine({ smile: 0.05, jaw: 0.04, cheek: 0.05, mouthOpen: 0.02 });
+    feed(machine, neutral, 0, 250);
+    const gentleSmile = {
+      ...neutral,
+      mouthSmileLeft: 0.38,
+      mouthSmileRight: 0.38,
+    };
+
+    expect(feed(machine, gentleSmile, 300, 500).state).toBe("SMILE");
+  });
+
+  it("keeps a relaxed face below the lowered smile threshold neutral", () => {
+    const machine = new ExpressionMachine({ smile: 0.05, jaw: 0.04, cheek: 0.05, mouthOpen: 0.02 });
+    const relaxed = {
+      ...neutral,
+      mouthSmileLeft: 0.28,
+      mouthSmileRight: 0.28,
+    };
+
+    expect(feed(machine, relaxed, 0, 800).state).toBe("NEUTRAL");
+  });
+
   it("gives laugh priority, launches once, and stays latched until neutral", () => {
     const machine = new ExpressionMachine({ smile: 0.05, jaw: 0.04, cheek: 0.05, mouthOpen: 0.02 });
     const laugh = {

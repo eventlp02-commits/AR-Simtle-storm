@@ -35,7 +35,8 @@ export function WeatherCoreHero() {
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x050811, 0.075);
     const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 100);
-    camera.position.set(0, 0, 4.15);
+    camera.position.set(0, 0, 5.85);
+    camera.lookAt(0, 0, 0);
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -134,8 +135,9 @@ export function WeatherCoreHero() {
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        model.scale.setScalar(2.05 / Math.max(size.x, size.y, size.z));
+        const scaleFactor = 2.05 / Math.max(size.x, size.y, size.z);
+        model.scale.setScalar(scaleFactor);
+        model.position.copy(center).multiplyScalar(-scaleFactor);
         model.rotation.set(0.04, -0.3, -0.03);
         model.traverse((child) => {
           if (!(child instanceof THREE.Mesh)) return;

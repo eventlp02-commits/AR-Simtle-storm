@@ -328,7 +328,8 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 /* Minimal presentation shell: the idle screen is deliberately only the 3D core and CTA. */
 .minimal-experience { width: 100%; height: 100svh; min-height: 520px; background: #070b13; }
 .minimal-stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
-.minimal-stage > .live-video-frame { width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+.minimal-stage-content, .minimal-home-stage { width: 100%; height: 100%; }
+.minimal-home-stage > .live-video-frame { width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
 .minimal-home { position: absolute; inset: 0; overflow: hidden; background: #070b13; }
 .minimal-home .weather-core { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; border: 0; box-shadow: none; }
 .minimal-home .weather-core::before,
@@ -336,10 +337,9 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 .minimal-home .weather-core-vignette { display: none; }
 .minimal-start { position: absolute; z-index: 5; left: 50%; bottom: clamp(28px, 7svh, 72px); transform: translateX(-50%); min-width: 154px; min-height: 52px; justify-content: center; padding: 0 25px; border: 1px solid rgba(255,255,255,.4); background: rgba(37,111,238,.92); box-shadow: 0 16px 42px rgba(16,70,172,.34); }
 .minimal-start:hover { transform: translateX(-50%) translateY(-1px); }
-.minimal-debug-controls { position: absolute; z-index: 12; right: 18px; bottom: 18px; display: flex; gap: 8px; }
+.phase-idle { overflow: hidden; }
 
 @media (max-width: 540px) {
   .minimal-experience { min-height: 480px; }
   .minimal-start { bottom: max(24px, env(safe-area-inset-bottom)); }
-  .minimal-debug-controls { right: 10px; bottom: 10px; max-width: calc(100% - 20px); overflow-x: auto; }
 }

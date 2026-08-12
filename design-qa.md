@@ -9,12 +9,12 @@
 
 ## Full-view comparison evidence
 
-The implementation removes the reference's title, labels, legends, navigation, side rail and toolbar. The visible page contains only the centered weather core and one centered CTA, matching the requested simplification. The stage fills the viewport with no overflow or cropped persistent controls.
+The idle implementation removes the reference's title, labels, legends, navigation, side rail and toolbar. The visible idle page contains only the centered weather core and one CTA. After the CTA is activated, the complete live-room navigation, AR stage, information rail and toolbar return.
 
 ## Required fidelity surfaces
 
 - Fonts and typography: only the CTA label remains; its size, weight and contrast are legible and consistent with the existing blue primary action.
-- Spacing and layout rhythm: the WebGL stage occupies 1280 × 720; the camera and model roots are centered at zero; the 154 × 52 CTA is horizontally centered below the sphere.
+- Spacing and layout rhythm: the WebGL stage occupies 1280 × 720; the GLB is centered using its scaled world-space bounding-box center; the 154 × 52 CTA is horizontally centered below the sphere.
 - Colors and visual tokens: the pale storm palette and blue CTA are retained from the source product.
 - Image quality and asset fidelity: the original optimized cinematic GLB is retained; no placeholder or code-drawn substitute is introduced.
 - Copy and content: the idle page exposes only “开始体验”, as requested.
@@ -24,7 +24,7 @@ Focused-region comparison was unnecessary because all non-asset content is a sin
 ## Interaction and runtime evidence
 
 - Primary CTA click tested in deterministic replay mode.
-- After click, the AR stage, expression state, performance panel and debug controls rendered.
+- After click, the complete live-room navigation, AR stage, information rail, toolbar, expression state and debug controls rendered.
 - DOM inspection found exactly one idle button and one WebGL canvas.
 - No browser console error was observed during idle load or replay transition.
 
@@ -34,8 +34,8 @@ No actionable P0, P1 or P2 differences remain. The reference's larger editorial 
 
 ## Comparison history
 
-- Initial implementation: legacy navigation, information rail, toolbar, title and labels competed with the model.
-- Fix: removed those regions, made the stage full-viewport, zeroed the Three.js camera/root vertical offsets, and centered the CTA below the model.
-- Post-fix evidence: `artifacts/minimal-home.png`; measured stage 1280 × 720, model camera/root Y = 0, CTA X center = 640.
+- Initial implementation: live-room chrome competed with the idle model, then an incorrect fix removed it from the active experience too. The GLB also applied unscaled center compensation after setting scale, leaving the visible asset vertically offset.
+- Fix: isolate the minimal shell to `idle`, restore all live-room regions after activation, and compensate the GLB position with its scaled bounding-box center.
+- Post-fix evidence: `artifacts/minimal-home.png`; idle has exactly one button and no live chrome, while deterministic replay confirms navigation, toolbar and information rail are present.
 
 final result: passed

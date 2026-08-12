@@ -81,7 +81,12 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(component, /Suspense/);
   assert.match(component, /className="prelive-preview minimal-home"/);
   assert.match(component, /className="preview-start-button minimal-start"/);
-  assert.doesNotMatch(component, /className="live-room-nav|className="live-room-toolbar|className="live-room-right/);
+  assert.match(component, /phase === "idle"/);
+  assert.match(component, /className="live-room-nav"/);
+  assert.match(component, /className="live-room-toolbar"/);
+  assert.match(component, /className="live-room-right"/);
+  assert.match(component, /直播信息/);
+  assert.match(component, /礼物贡献榜/);
   assert.match(component, /@phosphor-icons\/react/);
   assert.doesNotMatch(component, /from "@phosphor-icons\/react"/);
   assert.match(component, /@phosphor-icons\/react\/Play/);
@@ -231,7 +236,7 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
     const rule = css.match(new RegExp(`\\.${selector}[^\\{]*\\{([^}]*)\\}`, "s"))?.[1] ?? "";
     assert.doesNotMatch(rule, /backdrop-filter/);
   }
-  assert.match(css, /\.minimal-debug-controls\s*\{/);
+  assert.match(css, /\.phase-idle\s*\{/);
   const fireworkDimmerRule = css.match(/\.firework-dimmer\s*\{([^}]*)\}/s)?.[1] ?? "";
   assert.match(fireworkDimmerRule, /z-index:\s*1/);
   assert.match(fireworkDimmerRule, /opacity:\s*0/);

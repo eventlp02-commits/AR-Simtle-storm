@@ -10,8 +10,26 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
+import { Broadcast } from "@phosphor-icons/react/Broadcast";
+import { CalendarDots } from "@phosphor-icons/react/CalendarDots";
+import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
+import { Compass } from "@phosphor-icons/react/Compass";
+import { CornersOut } from "@phosphor-icons/react/CornersOut";
+import { Crown } from "@phosphor-icons/react/Crown";
 import { Gift } from "@phosphor-icons/react/Gift";
+import { Heart } from "@phosphor-icons/react/Heart";
+import { House } from "@phosphor-icons/react/House";
+import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { MonitorPlay } from "@phosphor-icons/react/MonitorPlay";
+import { Planet } from "@phosphor-icons/react/Planet";
 import { Play } from "@phosphor-icons/react/Play";
+import { ShareNetwork } from "@phosphor-icons/react/ShareNetwork";
+import { SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
+import { SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
+import { Star } from "@phosphor-icons/react/Star";
+import { StopCircle } from "@phosphor-icons/react/StopCircle";
+import { Users } from "@phosphor-icons/react/Users";
+import { VideoCamera } from "@phosphor-icons/react/VideoCamera";
 import surpriseAudioUrl from "../assets/audio/surprise.mp3?url";
 import rainAudioUrl from "../assets/audio/rain-loop.mp3?url";
 import fireworksAudioUrl from "../assets/audio/fireworks-loop.mp3?url";
@@ -179,7 +197,11 @@ export function SmileStormExperience() {
   const [fireworkSceneActive, setFireworkSceneActive] = useState(false);
   const [expressionGuideStep, setExpressionGuideStep] =
     useState<ExpressionGuideStep>("SMILE_PROMPT");
+  const [muted, setMuted] = useState(false);
   const [activeDrop, setActiveDrop] = useState<ActiveAccessoryDrop | null>(null);
+  const [liked, setLiked] = useState(false);
+  const [favorite, setFavorite] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [replayActive, setReplayActive] = useState(false);
   const [debugEnabled] = useState(
     () =>
@@ -338,6 +360,24 @@ export function SmileStormExperience() {
     setCalibrationProgress(0);
     setMetrics(defaultMetrics);
     setPhaseState("idle");
+  };
+
+  const toggleMuted = () => {
+    setMuted((current) => {
+      const next = !current;
+      ensureEffectAudio().setMuted(next);
+      return next;
+    });
+  };
+
+  const toggleLike = () => {
+    setLiked((current) => !current);
+  };
+
+  const toggleFullscreen = () => {
+    const room = document.querySelector<HTMLElement>(".live-room");
+    if (!document.fullscreenElement) void room?.requestFullscreen();
+    else void document.exitFullscreen();
   };
 
   useEffect(() => {
@@ -796,8 +836,44 @@ export function SmileStormExperience() {
   );
 
   return (
-    <main className={`experience-shell minimal-experience phase-${phase}`}>
-      <section className="minimal-stage" aria-label="表情 AR 体验">
+    <main className={`experience-shell phase-${phase}${phase === "idle" ? " minimal-experience" : " live-room-shell"}`}>
+      <section className={phase === "idle" ? "minimal-stage" : "live-room"} aria-label="表情 AR 体验">
+        {isExperienceVisible && (
+          <header className="live-room-nav">
+            <div className="live-brand" aria-label="Smile Storm Live">
+              <Broadcast size={22} weight="fill" aria-hidden="true" />
+              <strong>Smile<span>Live</span></strong>
+            </div>
+            <nav className="live-nav-links" aria-label="直播导航">
+              <button type="button"><House size={17} />首页</button>
+              <button type="button" className="active"><VideoCamera size={17} />直播</button>
+              <button type="button"><Compass size={17} />发现</button>
+              <button type="button"><CalendarDots size={17} />活动</button>
+              <button type="button"><Users size={17} />关注</button>
+            </nav>
+            <form className="live-search" onSubmit={(event) => event.preventDefault()} role="search">
+              <MagnifyingGlass size={17} aria-hidden="true" />
+              <input
+                aria-label="搜索直播、房间或内容"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="搜索直播、房间或内容"
+              />
+            </form>
+            <div className="live-nav-actions">
+              <button type="button"><Crown size={17} weight="fill" />会员</button>
+              <button type="button" onClick={() => setFavorite((current) => !current)} aria-pressed={favorite}>
+                <Heart size={17} weight={favorite ? "fill" : "regular"} />收藏
+              </button>
+              <button type="button" className="go-live-button" onClick={stopExperience}>
+                <StopCircle size={18} weight="fill" />结束
+              </button>
+            </div>
+          </header>
+        )}
+
+        <div className={phase === "idle" ? "minimal-stage-content" : "live-room-grid"}>
+          <section className={phase === "idle" ? "minimal-home-stage" : "live-room-center"} aria-label="直播舞台">
             <div
               className={`live-video-frame live-stage${replayActive ? " replay-mode" : ""}`}
               ref={viewportRef}
@@ -917,20 +993,6 @@ export function SmileStormExperience() {
                 </div>
               )}
 
-              {debugEnabled && isExperienceVisible && (
-                <div className="minimal-debug-controls" aria-label="调试工具">
-                  {(phase === "calibrating" || phase === "ready") && (
-                    <button className="debug-toggle" onClick={launchDebugFireworks}>测试烟花</button>
-                  )}
-                  {phase === "ready" && (
-                    <button className="debug-toggle" onClick={launchDebugAccessory}>测试3D礼物</button>
-                  )}
-                  <button className="debug-toggle" onClick={() => setShowDebug((visible) => !visible)} aria-pressed={showDebug}>
-                    {showDebug ? "隐藏数据" : "运行数据"}
-                  </button>
-                </div>
-              )}
-
               {phase === "error" && (
                 <div className="error-panel" role="alert">
                   <span className="error-code">AR / ERROR</span>
@@ -943,6 +1005,69 @@ export function SmileStormExperience() {
                 </div>
               )}
             </div>
+
+            {isExperienceVisible && (
+              <footer className="live-room-toolbar" aria-label="直播操作栏">
+                <div className="toolbar-group toolbar-primary">
+                  <button className="round-action primary" onClick={stopExperience} aria-label="结束直播">
+                    <StopCircle size={22} weight="fill" />
+                  </button>
+                  <button className="round-action" onClick={toggleMuted} aria-pressed={muted} aria-label={muted ? "开启声音" : "关闭声音"}>
+                    {muted ? <SpeakerSlash size={20} /> : <SpeakerHigh size={20} />}
+                  </button>
+                  <button className="toolbar-button" type="button"><ChatCircleDots size={18} />弹幕开</button>
+                </div>
+                <div className="toolbar-group toolbar-social">
+                  <button className={liked ? "toolbar-button selected" : "toolbar-button"} onClick={toggleLike} aria-pressed={liked}><Heart size={19} weight={liked ? "fill" : "regular"} />点赞</button>
+                  <button className="toolbar-button" type="button"><Gift size={19} />送礼</button>
+                  <button className={favorite ? "toolbar-button selected" : "toolbar-button"} onClick={() => setFavorite((current) => !current)} aria-pressed={favorite}><Star size={19} weight={favorite ? "fill" : "regular"} />收藏</button>
+                  <button className="toolbar-button" type="button" onClick={() => void navigator.clipboard?.writeText(window.location.href)}><ShareNetwork size={19} />分享</button>
+                </div>
+                <div className="toolbar-group toolbar-view">
+                  <span className="quality-pill"><MonitorPlay size={18} />{metrics.quality === "HIGH" ? "超清" : metrics.quality}</span>
+                  {debugEnabled && (phase === "calibrating" || phase === "ready") && <button className="debug-toggle" onClick={launchDebugFireworks}>测试烟花</button>}
+                  {debugEnabled && phase === "ready" && <button className="debug-toggle" onClick={launchDebugAccessory}>测试3D礼物</button>}
+                  {debugEnabled && isExperienceVisible && (
+                    <button className="debug-toggle" onClick={() => setShowDebug((visible) => !visible)} aria-pressed={showDebug}>{showDebug ? "隐藏数据" : "运行数据"}</button>
+                  )}
+                  <button className="round-action" onClick={toggleFullscreen} aria-label="切换全屏"><CornersOut size={20} /></button>
+                </div>
+              </footer>
+            )}
+          </section>
+
+          {isExperienceVisible && (
+            <aside className="live-room-right" aria-label="直播信息与礼物">
+              <section className="live-card live-info-card">
+                <header><h3>直播信息</h3><Broadcast size={18} /></header>
+                <dl>
+                  <div><dt>直播状态</dt><dd className="is-live">直播中</dd></div>
+                  <div><dt>画质</dt><dd>720P</dd></div>
+                  <div><dt>码率</dt><dd>自适应</dd></div>
+                  <div><dt>渲染</dt><dd>{metrics.renderFps ? `${metrics.renderFps.toFixed(0)} fps` : "60 fps"}</dd></div>
+                  <div><dt>隐私</dt><dd>本机处理</dd></div>
+                </dl>
+                <p>摄像头画面仅在本机处理，不会上传或保存。</p>
+              </section>
+              <section className="live-card live-gifts-card">
+                <header><h3>AR 礼物</h3><Gift size={18} /></header>
+                <p>不需点选，只会在天气特效中低概率短暂掉落。</p>
+                <div className="gift-grid"><article><span><Planet size={28} weight="duotone" /></span><b>星轨光环</b><small>天气随机</small></article></div>
+                <div className="gift-drop-policy" aria-label="稀有礼物掉落规则">
+                  <span><b>6%/秒</b> 雨中稀有掉落</span><span><b>18%/次</b> 烟花稀有掉落</span><span><b>1 秒</b> 仅展示 1 秒</span>
+                </div>
+              </section>
+              <section className="live-card contributor-card">
+                <header><h3>礼物贡献榜</h3><Crown size={18} weight="fill" /></header>
+                <ol>
+                  <li><span>1</span><div><b>Stella</b><small>星轨守护者</small></div><strong>12.8k</strong></li>
+                  <li><span>2</span><div><b>NOVA</b><small>未来旅人</small></div><strong>9.6k</strong></li>
+                  <li><span>3</span><div><b>Cloud</b><small>风暴听众</small></div><strong>6.2k</strong></li>
+                </ol>
+              </section>
+            </aside>
+          )}
+        </div>
       </section>
     </main>
   );

@@ -98,7 +98,7 @@ export class ExpressionMachine {
     const mouthOpenRatio = this.smoothed.mouthOpenRatio;
     const teethVisibility = this.smoothed.teethVisibility;
 
-    const smileEnter = Math.max(this.baselines.smile + 0.18, 0.45);
+    const smileEnter = Math.max(this.baselines.smile + 0.14, 0.34);
     const smileExit = Math.max(this.baselines.smile + 0.1, 0.32);
     const laughSmile = Math.max(this.baselines.smile + 0.22, 0.5);
     const moderateLaughSmile = Math.max(this.baselines.smile + 0.16, 0.36);
