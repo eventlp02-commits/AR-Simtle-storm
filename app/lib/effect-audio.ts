@@ -1,5 +1,6 @@
 export interface AudioTrack {
   loop: boolean;
+  muted: boolean;
   volume: number;
   currentTime: number;
   play(): Promise<void> | void;
@@ -52,21 +53,20 @@ export class EffectAudioController {
   ) {}
 
   async unlock() {
-    await Promise.all(
-      Object.values(this.tracks).map(async (track) => {
-        const previousVolume = track.volume;
-        track.volume = 0;
-        try {
-          await track.play();
-        } catch {
-          // A later user gesture can retry. Audio must never block the AR experience.
-        } finally {
-          track.pause();
-          track.currentTime = 0;
-          track.volume = previousVolume;
-        }
-      }),
-    );
+    await Promise.all(Object.values(this.tracks).map(async (track) => {
+      // The media-element muted flag is enforced before decoding/output and is
+      // safer than temporarily setting volume=0, which leaked samples in WebKit.
+      track.muted = true;
+      try {
+        await track.play();
+      } catch {
+        // A later gesture may retry; audio must never block the camera.
+      } finally {
+        track.pause();
+        track.currentTime = 0;
+        track.muted = false;
+      }
+    }));
   }
 
   startRain() {

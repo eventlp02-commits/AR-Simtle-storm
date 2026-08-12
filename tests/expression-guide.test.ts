@@ -16,11 +16,13 @@ describe("ExpressionGuideController", () => {
     expect(guide.getStep()).toBe("SMILE_PROMPT");
   });
 
-  it("advances through smile then laugh and never regresses", () => {
+  it("advances through smile, laugh, then shake and never regresses", () => {
     const guide = new ExpressionGuideController();
     guide.observe("SMILE");
     expect(guide.getStep()).toBe("LAUGH_PROMPT");
     guide.observe("LAUGH_LATCHED");
+    expect(guide.getStep()).toBe("SHAKE_PROMPT");
+    guide.observeShake();
     expect(guide.getStep()).toBe("COMPLETE");
     guide.observe("SMILE");
     expect(guide.getStep()).toBe("COMPLETE");
@@ -30,6 +32,7 @@ describe("ExpressionGuideController", () => {
     const guide = new ExpressionGuideController();
     guide.observe("SMILE");
     guide.observe("LAUGH_LATCHED");
+    guide.observeShake();
     guide.reset();
     expect(guide.getStep()).toBe("SMILE_PROMPT");
   });
@@ -45,6 +48,11 @@ describe("expressionGuidePresentation", () => {
     expect(expressionGuidePresentation("LAUGH_PROMPT", "NEUTRAL", false)).toEqual({
       expression: "laugh",
       prompt: "试试大笑～",
+      mode: "prompt",
+    });
+    expect(expressionGuidePresentation("SHAKE_PROMPT", "NEUTRAL", false)).toEqual({
+      expression: null,
+      prompt: "试试摇头～",
       mode: "prompt",
     });
   });

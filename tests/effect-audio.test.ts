@@ -7,13 +7,16 @@ import {
 
 class FakeTrack implements AudioTrack {
   loop = false;
+  muted = false;
   volume = 1;
   currentTime = 0;
   playCalls = 0;
+  playMutedStates: boolean[] = [];
   pauseCalls = 0;
 
   play() {
     this.playCalls += 1;
+    this.playMutedStates.push(this.muted);
     return Promise.resolve();
   }
 
@@ -111,18 +114,22 @@ describe("EffectAudioController", () => {
     expect(fireworks.playCalls).toBe(2);
   });
 
-  it("unlocks every track without consuming the first-firework surprise", async () => {
+  it("unlocks under browser-level mute without leaking or consuming the first surprise", async () => {
     const { controller, surprise, rain, fireworks } = setup();
 
     await expect(controller.unlock()).resolves.toBeUndefined();
-    controller.startFireworks();
+    expect(surprise.playMutedStates).toEqual([true]);
+    expect(rain.playMutedStates).toEqual([true]);
+    expect(fireworks.playMutedStates).toEqual([true]);
+    expect(surprise.muted).toBe(false);
+    expect(rain.muted).toBe(false);
+    expect(fireworks.muted).toBe(false);
 
+    controller.startFireworks();
     expect(surprise.playCalls).toBe(2);
-    expect(rain.playCalls).toBe(1);
     expect(fireworks.playCalls).toBe(2);
-    expect(surprise.pauseCalls).toBe(1);
-    expect(rain.pauseCalls).toBe(1);
-    expect(fireworks.pauseCalls).toBe(1);
+    expect(surprise.playMutedStates.at(-1)).toBe(false);
+    expect(fireworks.playMutedStates.at(-1)).toBe(false);
   });
 
   it("mutes active ambience and does not play newly triggered sounds while muted", () => {

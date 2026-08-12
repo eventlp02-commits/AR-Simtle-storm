@@ -2,10 +2,15 @@ import * as THREE from "three";
 import {
   createHeadAccessoryRig,
   headAccessoryTransform,
+  loadHeadAccessoryAssets,
   updateHeadAccessoryRig,
   type HeadAccessoryRig,
 } from "./head-accessories";
 import type { AccessoryKind } from "./accessory-drop-controller";
+import type { WearableAccessoryKind } from "./head-shake-controller";
+import type { CompactHeadPose } from "./vision-utils";
+import sunglassesAssetUrl from "../assets/accessories/sunglasses.optimized.glb?url";
+import hatAssetUrl from "../assets/accessories/hat.optimized.glb?url";
 import type { ParticleSystem } from "./particle-system";
 import type { HeadCollider } from "./physics";
 
@@ -130,6 +135,8 @@ interface ParticleRenderOptions {
   enableOcclusion?: boolean;
   enableExtraGlow?: boolean;
   activeAccessory?: AccessoryKind | null;
+  wearableAccessory?: WearableAccessoryKind | null;
+  headPose?: CompactHeadPose | null;
   elapsedSeconds?: number;
   quality?: "HIGH" | "MEDIUM" | "LOW";
   reducedMotion?: boolean;
@@ -194,6 +201,10 @@ export class ParticleRenderer {
     this.fireworkBehindMesh.renderOrder = 1;
     this.fireworkMesh.renderOrder = 2;
     this.accessoryRig = createHeadAccessoryRig();
+    void loadHeadAccessoryAssets(this.accessoryRig, {
+      sunglasses: sunglassesAssetUrl,
+      hat: hatAssetUrl,
+    });
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.7);
     const keyLight = new THREE.DirectionalLight(0xcde8ff, 2.1);
     keyLight.position.set(-0.45, 0.8, 1);
@@ -315,6 +326,8 @@ export class ParticleRenderer {
       options.elapsedSeconds ?? 0,
       options.quality ?? "HIGH",
       options.reducedMotion ?? false,
+      options.wearableAccessory ?? null,
+      options.headPose ?? null,
     );
     const count = particles.writeRenderData(this.renderData);
     let rainCount = 0;

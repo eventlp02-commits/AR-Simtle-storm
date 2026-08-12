@@ -6,6 +6,38 @@ export interface NormalizedLandmark {
   z: number;
 }
 
+export interface CompactHeadPose {
+  yaw: number;
+  pitch: number;
+  roll: number;
+}
+
+export interface TransformationMatrix {
+  rows: number;
+  columns: number;
+  data: number[];
+}
+
+export function poseFromTransformationMatrix(
+  matrix: TransformationMatrix | undefined,
+): CompactHeadPose | null {
+  if (!matrix || matrix.rows !== 4 || matrix.columns !== 4 || matrix.data.length < 16) {
+    return null;
+  }
+  // MediaPipe's matrix data is column-major. Extract a stable Y-X-Z Euler
+  // decomposition; translation and scale are intentionally discarded.
+  const m = matrix.data;
+  const yaw = Math.asin(Math.max(-1, Math.min(1, m[8])));
+  const cosineYaw = Math.cos(yaw);
+  const pitch = Math.abs(cosineYaw) > 1e-5
+    ? Math.atan2(-m[9], m[10])
+    : Math.atan2(m[6], m[5]);
+  const roll = Math.abs(cosineYaw) > 1e-5
+    ? Math.atan2(-m[4], m[0])
+    : 0;
+  return { yaw, pitch, roll };
+}
+
 export interface CoverTransform {
   viewportWidth: number;
   viewportHeight: number;

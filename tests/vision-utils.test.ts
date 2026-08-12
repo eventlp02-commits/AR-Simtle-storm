@@ -4,9 +4,39 @@ import {
   compactFaceSignals,
   inferenceFrameSize,
   landmarksToFaceOval,
+  poseFromTransformationMatrix,
   selectFaceOvalLandmarks,
   selectPrimaryFaceIndex,
 } from "../app/lib/vision-utils";
+
+describe("poseFromTransformationMatrix", () => {
+  it("extracts a compact neutral pose from an identity matrix", () => {
+    expect(poseFromTransformationMatrix({
+      rows: 4,
+      columns: 4,
+      data: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    })).toEqual({ yaw: 0, pitch: -0, roll: -0 });
+  });
+
+  it("extracts yaw without transporting the full face landmark set", () => {
+    const yaw = 0.32;
+    const cosine = Math.cos(yaw);
+    const sine = Math.sin(yaw);
+    const pose = poseFromTransformationMatrix({
+      rows: 4,
+      columns: 4,
+      data: [cosine, 0, -sine, 0, 0, 1, 0, 0, sine, 0, cosine, 0, 0, 0, 0, 1],
+    });
+    expect(pose?.yaw).toBeCloseTo(yaw, 5);
+    expect(pose?.pitch).toBeCloseTo(0, 5);
+    expect(pose?.roll).toBeCloseTo(0, 5);
+  });
+
+  it("rejects missing and malformed matrices", () => {
+    expect(poseFromTransformationMatrix(undefined)).toBeNull();
+    expect(poseFromTransformationMatrix({ rows: 3, columns: 3, data: [1] })).toBeNull();
+  });
+});
 
 describe("blendshapesToInput", () => {
   it("maps named MediaPipe categories and defaults missing values to zero", () => {

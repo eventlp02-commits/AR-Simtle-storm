@@ -81,6 +81,11 @@ import {
   expressionGuidePresentation,
   type ExpressionGuideStep,
 } from "../lib/expression-guide";
+import {
+  HeadShakeController,
+  WearableAccessoryController,
+} from "../lib/head-shake-controller";
+import type { CompactHeadPose } from "../lib/vision-utils";
 
 const WeatherCoreHero = lazy(() => import("./WeatherCoreHero").then((module) => ({
   default: module.WeatherCoreHero,
@@ -134,6 +139,7 @@ interface VisionResultMessage {
   blendshapes: Record<string, number>;
   mouthOpenRatio: number;
   teethVisibility: number;
+  pose: CompactHeadPose | null;
 }
 
 interface RuntimeMetrics {
@@ -257,6 +263,9 @@ export function SmileStormExperience() {
   const runningRef = useRef(false);
   const accessoryDropRef = useRef(new AccessoryDropController());
   const activeAccessoryRef = useRef<AccessoryKind | null>(null);
+  const headShakeRef = useRef(new HeadShakeController());
+  const wearableAccessoryRef = useRef(new WearableAccessoryController());
+  const headPoseRef = useRef<CompactHeadPose | null>(null);
 
   const setPhaseState = (next: Phase) => {
     phaseRef.current = next;
@@ -331,6 +340,9 @@ export function SmileStormExperience() {
     calibrationSamplesRef.current = [];
     colliderRef.current = null;
     targetColliderRef.current = null;
+    headPoseRef.current = null;
+    headShakeRef.current.reset();
+    wearableAccessoryRef.current.reset();
     lastFrameRef.current = 0;
     lastInferenceRequestRef.current = 0;
     lastMetricsUpdateRef.current = 0;
@@ -460,10 +472,13 @@ export function SmileStormExperience() {
         setRuntimeEffectState("NO_FACE");
         colliderRef.current = null;
         targetColliderRef.current = null;
+        headPoseRef.current = null;
+        headShakeRef.current.resetTracking();
       }
       return;
     }
     noFaceSinceRef.current = null;
+    headPoseRef.current = message.pose;
 
     const video = videoRef.current;
     const viewportSize = viewportSizeRef.current;
@@ -516,6 +531,13 @@ export function SmileStormExperience() {
     }
 
     if (phaseRef.current !== "ready") return;
+    if (
+      message.pose &&
+      headShakeRef.current.observe(message.pose.yaw, message.timestampMs)
+    ) {
+      wearableAccessoryRef.current.next();
+      setExpressionGuideStep(expressionGuideRef.current.observeShake());
+    }
     const result = expressionRef.current.update(input, message.timestampMs);
     setRuntimeEffectState(result.state);
     if (result.launchFireworks) {
@@ -592,6 +614,8 @@ export function SmileStormExperience() {
         enableOcclusion: qualityLevel !== "LOW" && !reducedMotionRef.current,
         enableExtraGlow: qualityLevel !== "LOW" && !reducedMotionRef.current,
         activeAccessory: activeAccessoryRef.current,
+        wearableAccessory: wearableAccessoryRef.current.getActive(),
+        headPose: headPoseRef.current,
         elapsedSeconds: now / 1_000,
         quality: qualityLevel,
         reducedMotion: reducedMotionRef.current,
@@ -718,6 +742,17 @@ export function SmileStormExperience() {
           };
           if (frame.result.launchFireworks) launchFireworks(performance.now());
         }, frame.atMs),
+      );
+    }
+    // Deterministic full shakes make both wearables inspectable without a camera.
+    for (const [delayMs, kind] of [[3_000, "sunglasses"], [10_000, "hat"]] as const) {
+      replayTimersRef.current.push(
+        window.setTimeout(() => {
+          while (wearableAccessoryRef.current.getActive() !== kind) {
+            wearableAccessoryRef.current.next();
+          }
+          setExpressionGuideStep(expressionGuideRef.current.observeShake());
+        }, delayMs),
       );
     }
   };
@@ -937,7 +972,7 @@ export function SmileStormExperience() {
 
               {phase === "ready" && (
                 <div className={`effect-status state-${effectState.toLowerCase()}`} aria-live="polite">
-                  {guidePresentation ? (
+                  {guidePresentation?.expression ? (
                     <span className="expression-guide-slot">
                       <img
                         className="expression-guide-icon"
@@ -989,7 +1024,7 @@ export function SmileStormExperience() {
 
               {phase === "ready" && (
                 <div className="gesture-guide" aria-hidden="true">
-                  <span>微笑触发下雨</span><span>大笑触发烟花</span><span>摆头碰撞</span>
+                  <span>微笑触发下雨</span><span>大笑触发烟花</span><span>摇头切换配饰</span>
                 </div>
               )}
 
@@ -1051,7 +1086,7 @@ export function SmileStormExperience() {
               </section>
               <section className="live-card live-gifts-card">
                 <header><h3>AR 礼物</h3><Gift size={18} /></header>
-                <p>不需点选，只会在天气特效中低概率短暂掉落。</p>
+                <p>完整摇头可切换墨镜与帽子；星轨只在天气特效中低概率短暂掉落。</p>
                 <div className="gift-grid"><article><span><Planet size={28} weight="duotone" /></span><b>星轨光环</b><small>天气随机</small></article></div>
                 <div className="gift-drop-policy" aria-label="稀有礼物掉落规则">
                   <span><b>6%/秒</b> 雨中稀有掉落</span><span><b>18%/次</b> 烟花稀有掉落</span><span><b>1 秒</b> 仅展示 1 秒</span>

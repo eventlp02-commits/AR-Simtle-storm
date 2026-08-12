@@ -1,6 +1,10 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import type { AccessoryKind } from "./accessory-drop-controller";
+import type { WearableAccessoryKind } from "./head-shake-controller";
 import type { HeadCollider } from "./physics";
+import type { CompactHeadPose } from "./vision-utils";
 
 export const ACCESSORY_TRIANGLE_BUDGET = 1_800;
 export const MAX_ACCESSORY_RADIAL_SEGMENTS = 24;
@@ -19,8 +23,15 @@ export interface HeadAccessoryRig {
   orbit: THREE.Group;
   orbitSpinner: THREE.Group;
   planets: THREE.Object3D[];
+  sunglasses: THREE.Group;
+  hat: THREE.Group;
   triangleCount: number;
   dispose: () => void;
+}
+
+export interface WearableAssetUrls {
+  sunglasses: string;
+  hat: string;
 }
 
 type AccessoryQuality = "HIGH" | "MEDIUM" | "LOW";
@@ -118,6 +129,95 @@ const triangleCount = (root: THREE.Object3D) => {
   return Math.round(count);
 };
 
+export function setSunglassesMaterial(root: THREE.Object3D) {
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x30343b,
+    metalness: 0.42,
+    roughness: 0.34,
+    side: THREE.DoubleSide,
+    depthTest: true,
+    depthWrite: true,
+    toneMapped: false,
+  });
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.material = material;
+    object.castShadow = false;
+    object.receiveShadow = false;
+    object.frustumCulled = false;
+    object.renderOrder = 3;
+  });
+}
+
+const normalizeWearable = (object: THREE.Object3D) => {
+  object.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(object);
+  const size = bounds.getSize(new THREE.Vector3());
+  const center = bounds.getCenter(new THREE.Vector3());
+  const width = Math.max(size.x, 1e-4);
+  const scale = 1 / width;
+  object.scale.setScalar(scale);
+  object.position.copy(center).multiplyScalar(-scale);
+  object.updateMatrixWorld(true);
+};
+
+const wearableAssetCache = new Map<string, Promise<THREE.Object3D>>();
+
+export function retryableCachedAsset<T>(
+  cache: Map<string, Promise<T>>,
+  key: string,
+  load: () => Promise<T>,
+) {
+  const existing = cache.get(key);
+  if (existing) return existing;
+  const pending = load().catch((error) => {
+    if (cache.get(key) === pending) cache.delete(key);
+    throw error;
+  });
+  cache.set(key, pending);
+  return pending;
+}
+
+const loadWearableTemplate = (
+  loader: GLTFLoader,
+  url: string,
+  prepare?: (object: THREE.Object3D) => void,
+) => {
+  return retryableCachedAsset(wearableAssetCache, url, () => loader.loadAsync(url).then((gltf) => {
+    normalizeWearable(gltf.scene);
+    prepare?.(gltf.scene);
+    gltf.scene.traverse((object) => {
+      object.userData.sharedAccessoryAsset = true;
+    });
+    return gltf.scene;
+  }));
+};
+
+export async function loadHeadAccessoryAssets(
+  rig: HeadAccessoryRig,
+  urls: WearableAssetUrls,
+) {
+  const loader = new GLTFLoader();
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  const attach = async (
+    url: string,
+    mount: THREE.Group,
+    prepare?: (object: THREE.Object3D) => void,
+  ) => {
+    const template = await loadWearableTemplate(loader, url, prepare);
+    mount.add(template.clone(true));
+  };
+  const results = await Promise.allSettled([
+    attach(urls.sunglasses, rig.sunglasses, setSunglassesMaterial),
+    attach(urls.hat, rig.hat),
+  ]);
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.warn(`${index === 0 ? "Sunglasses" : "Hat"} accessory failed to load`, result.reason);
+    }
+  });
+}
+
 export function createHeadAccessoryRig(): HeadAccessoryRig {
   const root = new THREE.Group();
   root.name = "head-accessory-root";
@@ -174,7 +274,14 @@ export function createHeadAccessoryRig(): HeadAccessoryRig {
   orbitTilt.add(orbitRing, orbitSpinner);
   orbit.add(orbitTilt);
 
-  root.add(occluder, orbit);
+  const sunglasses = new THREE.Group();
+  sunglasses.name = "gift-sunglasses";
+  sunglasses.visible = false;
+  const hat = new THREE.Group();
+  hat.name = "gift-hat";
+  hat.visible = false;
+
+  root.add(occluder, orbit, sunglasses, hat);
   const measuredTriangleCount = triangleCount(root);
   if (measuredTriangleCount > ACCESSORY_TRIANGLE_BUDGET) {
     throw new Error(`Head accessory triangle budget exceeded: ${measuredTriangleCount}`);
@@ -186,12 +293,15 @@ export function createHeadAccessoryRig(): HeadAccessoryRig {
     orbit,
     orbitSpinner,
     planets,
+    sunglasses,
+    hat,
     triangleCount: measuredTriangleCount,
     dispose: () => {
       const geometries = new Set<THREE.BufferGeometry>();
       const materials = new Set<THREE.Material>();
       root.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
+        if (object.userData.sharedAccessoryAsset) return;
         geometries.add(object.geometry);
         const objectMaterials = Array.isArray(object.material)
           ? object.material
@@ -212,12 +322,18 @@ export function updateHeadAccessoryRig(
   elapsedSeconds: number,
   quality: AccessoryQuality,
   reducedMotion: boolean,
+  wearableAccessory: WearableAccessoryKind | null = null,
+  pose: CompactHeadPose | null = null,
 ) {
-  rig.root.visible = Boolean(transform && activeAccessory);
-  if (!transform || !activeAccessory) return;
+  rig.root.visible = Boolean(transform && (activeAccessory || wearableAccessory));
+  if (!transform || (!activeAccessory && !wearableAccessory)) return;
 
   rig.root.position.set(transform.centerX, viewportHeight - transform.centerY, 0);
-  rig.root.rotation.z = -transform.roll;
+  rig.root.rotation.set(
+    -(pose?.pitch ?? 0),
+    -(pose?.yaw ?? 0),
+    -(pose?.roll ?? transform.roll),
+  );
   rig.occluder.visible = true;
   rig.occluder.scale.set(
     transform.width * 0.48,
@@ -225,7 +341,7 @@ export function updateHeadAccessoryRig(
     transform.width * 0.15,
   );
 
-  rig.orbit.visible = true;
+  rig.orbit.visible = activeAccessory === "orbit";
   rig.orbit.position.set(0, 0, 0);
   rig.orbit.scale.set(
     transform.width * 1.18,
@@ -236,4 +352,16 @@ export function updateHeadAccessoryRig(
   rig.planets.forEach((planet, index) => {
     planet.visible = quality === "HIGH" || index === 0;
   });
+
+  rig.sunglasses.visible = wearableAccessory === "sunglasses";
+  // Keep the lenses in front of the depth-only head volume while the model's
+  // long temples still cross its side silhouette as the head turns.
+  rig.sunglasses.position.set(0, transform.height * 0.075, transform.width * 0.86);
+  rig.sunglasses.scale.setScalar(transform.width * 1.16);
+  rig.sunglasses.rotation.set(0, Math.PI, 0);
+
+  rig.hat.visible = wearableAccessory === "hat";
+  rig.hat.position.set(0, transform.height * 0.37, transform.width * 0.015);
+  rig.hat.scale.setScalar(transform.width * 1.08);
+  rig.hat.rotation.set(0, Math.PI, 0);
 }

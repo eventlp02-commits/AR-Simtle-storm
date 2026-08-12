@@ -7,6 +7,7 @@ import {
 } from "../lib/mouth-signals";
 import {
   compactFaceSignals,
+  poseFromTransformationMatrix,
   selectFaceOvalLandmarks,
   selectPrimaryFaceIndex,
 } from "../lib/vision-utils";
@@ -67,7 +68,7 @@ async function createLandmarker(preferredDelegate: "GPU" | "CPU") {
     runningMode: "VIDEO",
     numFaces: 2,
     outputFaceBlendshapes: true,
-    outputFacialTransformationMatrixes: false,
+    outputFacialTransformationMatrixes: true,
     minFaceDetectionConfidence: 0.5,
     minFacePresenceConfidence: 0.5,
     minTrackingConfidence: 0.5,
@@ -124,6 +125,9 @@ workerScope.onmessage = async (event) => {
         mouthOpenRatio >= 0.08
           ? sampleTeethVisibility(message.bitmap, landmarks)
           : 0;
+      const pose = poseFromTransformationMatrix(
+        result.facialTransformationMatrixes[primaryIndex],
+      );
       workerScope.postMessage({
         type: "RESULT",
         timestampMs: message.timestampMs,
@@ -132,6 +136,7 @@ workerScope.onmessage = async (event) => {
         blendshapes,
         mouthOpenRatio,
         teethVisibility,
+        pose,
       });
     } catch (error) {
       workerScope.postMessage({
