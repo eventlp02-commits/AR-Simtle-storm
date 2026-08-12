@@ -104,6 +104,7 @@ flowchart LR
 
 ## 文档
 
+- [项目完整归档：制作过程、迭代与最终效果](docs/PROJECT_ARCHIVE.md)
 - [性能与验收记录](docs/PERFORMANCE.md)
 - [Vibecoding 复盘](VIBECODING.md)
 - [第三方依赖声明](THIRD_PARTY_NOTICES.md)
