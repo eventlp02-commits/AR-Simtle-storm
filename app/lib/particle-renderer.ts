@@ -4,6 +4,7 @@ import {
   headAccessoryTransform,
   loadHeadAccessoryAsset,
   unloadHeadAccessoryAsset,
+  unloadHeadAccessoryObject,
   updateHeadAccessoryRig,
   type HeadAccessoryRig,
 } from "./head-accessories";
@@ -232,9 +233,9 @@ export class ParticleRenderer {
     void loadHeadAccessoryAsset(this.accessoryRig, kind, {
       sunglasses: sunglassesAssetUrl,
       hat: hatAssetUrl,
-    }).then(() => {
+    }).then((object) => {
       if (request !== this.wearableRequest || this.desiredWearable !== kind) {
-        unloadHeadAccessoryAsset(this.accessoryRig, kind);
+        unloadHeadAccessoryObject(object);
         return;
       }
       this.loadedWearable = kind;

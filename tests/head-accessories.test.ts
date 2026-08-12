@@ -8,6 +8,7 @@ import {
   retryableCachedAsset,
   setSunglassesMaterial,
   unloadHeadAccessoryAsset,
+  unloadHeadAccessoryObject,
   wearableStageTransform,
   updateHeadAccessoryRig,
 } from "../app/lib/head-accessories";
@@ -201,6 +202,24 @@ describe("low-poly head accessory rig", () => {
     expect(rig.sunglasses.children).toHaveLength(0);
     expect(geometryDispose).toHaveBeenCalledOnce();
     expect(materialDispose).toHaveBeenCalledOnce();
+    rig.dispose();
+  });
+
+  it("removes only the stale async object without clearing a newer model", () => {
+    const rig = createHeadAccessoryRig();
+    const stale = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial(),
+    );
+    const current = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial(),
+    );
+    rig.sunglasses.add(stale, current);
+
+    unloadHeadAccessoryObject(stale);
+
+    expect(rig.sunglasses.children).toEqual([current]);
     rig.dispose();
   });
 

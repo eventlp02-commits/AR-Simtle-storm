@@ -220,6 +220,7 @@ export async function loadHeadAccessoryAsset(
     kind === "sunglasses" ? setSunglassesMaterial : undefined,
   );
   mount.add(object);
+  return object;
 }
 
 const disposeObject = (root: THREE.Object3D) => {
@@ -251,6 +252,11 @@ export function unloadHeadAccessoryAsset(
     mount.remove(child);
     disposeObject(child);
   }
+}
+
+export function unloadHeadAccessoryObject(object: THREE.Object3D) {
+  object.removeFromParent();
+  disposeObject(object);
 }
 
 export function createHeadAccessoryRig(): HeadAccessoryRig {
