@@ -35,7 +35,7 @@ export function WeatherCoreHero() {
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x050811, 0.075);
     const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 100);
-    camera.position.set(0, 0.15, 4.15);
+    camera.position.set(0, 0, 4.15);
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -51,7 +51,7 @@ export function WeatherCoreHero() {
     mount.appendChild(renderer.domElement);
 
     const root = new THREE.Group();
-    root.position.y = -0.06;
+    root.position.y = 0;
     scene.add(root);
 
     const glassShell = new THREE.Mesh(
@@ -246,14 +246,6 @@ export function WeatherCoreHero() {
       </div>
       <div ref={mountRef} className="weather-core-canvas" />
       <div className="weather-core-vignette" aria-hidden="true" />
-      <div className="weather-core-label">
-        <span>LIVE WEATHER CORE</span>
-        <b>{status === "loading" ? "正在凝聚风暴" : status === "error" ? "风暴模型加载失败" : "表情驱动气象体"}</b>
-      </div>
-      <div className="weather-core-legend" aria-hidden="true">
-        <span><i className="legend-rain" /> 微笑 · 降雨</span>
-        <span><i className="legend-fire" /> 大笑 · 烟花</span>
-      </div>
     </div>
   );
 }

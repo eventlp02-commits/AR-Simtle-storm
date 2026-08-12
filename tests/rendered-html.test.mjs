@@ -34,17 +34,14 @@ test("server-renders the Smile Storm product landing page", async () => {
   const html = await response.text();
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /<title>Smile Storm — 表情驱动 AR 互动实验<\/title>/);
-  assert.match(html, /笑一下/);
-  assert.match(html, /让天气回应你/);
   assert.match(html, /开始体验/);
-  assert.match(html, /微笑/);
-  assert.match(html, /大笑 · 烟花/);
-  assert.match(html, /不会上传或保存/);
+  assert.match(html, /minimal-home/);
+  assert.match(html, /minimal-stage/);
   assert.doesNotMatch(html, /直播数据/);
-  assert.match(html, /直播信息/);
-  assert.match(html, /AR 礼物/);
-  assert.match(html, /开启直播/);
-  assert.match(html, /星轨/);
+  assert.doesNotMatch(html, /live-room-nav/);
+  assert.doesNotMatch(html, /live-room-toolbar/);
+  assert.doesNotMatch(html, /live-room-right/);
+  assert.doesNotMatch(html, /直播信息|礼物贡献榜|搜索直播|开启直播/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
@@ -82,11 +79,13 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(component, /WeatherCoreHero/);
   assert.match(component, /lazy\(\(\) => import\("\.\/WeatherCoreHero"\)/);
   assert.match(component, /Suspense/);
-  assert.match(component, /hero-title-line/);
+  assert.match(component, /className="prelive-preview minimal-home"/);
+  assert.match(component, /className="preview-start-button minimal-start"/);
+  assert.doesNotMatch(component, /className="live-room-nav|className="live-room-toolbar|className="live-room-right/);
   assert.match(component, /@phosphor-icons\/react/);
   assert.doesNotMatch(component, /from "@phosphor-icons\/react"/);
-  assert.match(component, /@phosphor-icons\/react\/Broadcast/);
-  for (const icon of ["Gift", "Planet"]) {
+  assert.match(component, /@phosphor-icons\/react\/Play/);
+  for (const icon of ["Gift"]) {
     assert.match(component, new RegExp(`\\b${icon}\\b`));
   }
   assert.doesNotMatch(component, /\bSunglasses\b/);
@@ -111,14 +110,11 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(component, /triggerFireworks\(timestampMs\)/);
   assert.match(component, /update\([\s\S]*"RAIN"[\s\S]*deltaSeconds/);
   assert.match(component, /\.reset\(\)/);
-  assert.match(component, /稀有掉落/);
-  assert.match(component, /6%\/秒/);
-  assert.match(component, /18%\/次/);
-  assert.match(component, /仅展示 1 秒/);
+  assert.match(component, /稀有礼物/);
   assert.doesNotMatch(component, /已装备/);
   assert.match(component, /elapsedSeconds:/);
   assert.match(component, /debugEnabled/);
-  assert.match(component, /debugEnabled\s*&&\s*\(phase === "calibrating"/);
+  assert.match(component, /phase === "calibrating" \|\| phase === "ready"/);
   assert.match(component, /debugEnabled\s*&&\s*isExperienceVisible\s*&&[\s\S]*setShowDebug/);
   assert.match(component, /debugEnabled\s*&&[\s\S]*运行数据/);
   assert.match(component, /surprise\.mp3\?url/);
@@ -205,17 +201,14 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(weatherHero, /ACESFilmicToneMapping/);
   assert.match(weatherHero, /renderer\.dispose\(\)/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.match(css, /\.hero-title-line\s*\{/);
+  assert.match(css, /\.minimal-stage\s*\{/);
+  assert.match(css, /\.minimal-home\s*\{/);
+  assert.match(css, /\.minimal-home \.weather-core\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0/s);
+  assert.match(css, /\.minimal-start\s*\{[^}]*left:\s*50%[^}]*bottom:/s);
   assert.match(css, /\.landing\s*\{[^}]*height:\s*100svh/s);
-  for (const selector of [
-    "live-room",
-    "live-room-grid",
-    "live-video-frame",
-    "live-room-toolbar",
-  ]) {
+  for (const selector of ["live-video-frame"]) {
     assert.match(css, new RegExp(`\\.${selector}\\s*\\{`));
   }
-  assert.match(css, /\.live-room-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+284px/s);
   assert.match(css, /\.live-video-frame\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/s);
   assert.match(css, /\.live-video-frame\.live-stage\s*\{[^}]*height:\s*auto/s);
   assert.match(css, /\.expression-guide-icon\s*\{/);
@@ -238,11 +231,7 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
     const rule = css.match(new RegExp(`\\.${selector}[^\\{]*\\{([^}]*)\\}`, "s"))?.[1] ?? "";
     assert.doesNotMatch(rule, /backdrop-filter/);
   }
-  const toolbarDebugRule = css.match(
-    /\.toolbar-view\s+\.debug-toggle\s*\{([^}]*)\}/s,
-  )?.[1] ?? "";
-  assert.match(toolbarDebugRule, /white-space:\s*nowrap/);
-  assert.match(toolbarDebugRule, /flex:\s*0\s+0\s+auto/);
+  assert.match(css, /\.minimal-debug-controls\s*\{/);
   const fireworkDimmerRule = css.match(/\.firework-dimmer\s*\{([^}]*)\}/s)?.[1] ?? "";
   assert.match(fireworkDimmerRule, /z-index:\s*1/);
   assert.match(fireworkDimmerRule, /opacity:\s*0/);

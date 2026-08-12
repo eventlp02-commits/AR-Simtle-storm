@@ -41,6 +41,8 @@ test("homepage weather core pauses and throttles its WebGL loop", async () => {
   assert.match(source, /new THREE\.MeshPhysicalMaterial/);
   assert.match(source, /transmission:\s*0\.72/);
   assert.match(source, /clearcoat:\s*1/);
+  assert.match(source, /camera\.position\.set\(0, 0, 4\.15\)/);
+  assert.match(source, /root\.position\.y = 0/);
 });
 
 test("weather core failure stays isolated and leaves a visible non-WebGL fallback", async () => {

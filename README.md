@@ -1,6 +1,10 @@
 # Smile Storm / 表情天气实验
 
-Smile Storm 是一个独立的浏览器端直播打赏 AR 原型：微笑时持续下雨，大笑时停止下雨并发射烟花；烟花粒子会与实时头部轮廓碰撞，用户可以摆头把粒子撞开。天气特效期间还会低概率掉落有真实厚度与头部前后遮挡关系的 Three.js 墨镜、礼帽或行星环，每次只展示 1 秒。
+## 在线体验
+
+[打开 Smile Storm 在线 Demo](https://eventlp02-commits.github.io/AR-Simtle-storm/)
+
+Smile Storm 是一个独立的浏览器端直播打赏 AR 原型：微笑时持续下雨，大笑时停止下雨并发射烟花；烟花粒子会与实时头部轮廓碰撞，用户可以摆头把粒子撞开。天气特效期间还会低概率掉落有真实厚度与头部前后遮挡关系的 Three.js 行星环，每次只展示 1 秒。
 
 ## 体验流程
 
@@ -98,6 +102,10 @@ flowchart LR
 - [性能与验收记录](docs/PERFORMANCE.md)
 - [Vibecoding 复盘](VIBECODING.md)
 - [第三方依赖声明](THIRD_PARTY_NOTICES.md)
+
+## Contributors
+
+- 梁平（[@eventlp02-commits](https://github.com/eventlp02-commits)）
 
 ## GitHub Pages
 
