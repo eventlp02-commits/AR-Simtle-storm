@@ -7,6 +7,7 @@ export default defineConfig({
   publicDir: false,
   plugins: [react()],
   build: {
+    target: ["es2019", "safari14"],
     outDir: "../dist-static",
     emptyOutDir: true,
   },

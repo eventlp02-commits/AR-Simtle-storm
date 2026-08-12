@@ -43,6 +43,20 @@ test("homepage weather core pauses and throttles its WebGL loop", async () => {
   assert.match(source, /clearcoat:\s*1/);
 });
 
+test("weather core failure stays isolated and leaves a visible non-WebGL fallback", async () => {
+  const [component, experience, styles] = await Promise.all([
+    readFile(new URL("../app/components/WeatherCoreHero.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/SmileStormExperience.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(component, /weather-core-fallback/);
+  assert.match(component, /try[\s\S]*new THREE\.WebGLRenderer/);
+  assert.match(component, /setStatus\("error"\)/);
+  assert.match(experience, /WeatherCoreErrorBoundary/);
+  assert.match(styles, /\.weather-core-fallback/);
+});
+
 function parseGlb(bytes) {
   assert.equal(bytes.toString("utf8", 0, 4), "glTF", "GLB magic header");
   assert.equal(bytes.readUInt32LE(4), 2, "GLB version");

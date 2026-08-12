@@ -1,6 +1,15 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 import { Broadcast } from "@phosphor-icons/react/Broadcast";
 import { CalendarDots } from "@phosphor-icons/react/CalendarDots";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
@@ -77,6 +86,38 @@ import {
 const WeatherCoreHero = lazy(() => import("./WeatherCoreHero").then((module) => ({
   default: module.WeatherCoreHero,
 })));
+
+class WeatherCoreErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // The 3D preview is optional. Camera controls must remain interactive.
+    void error;
+    void info;
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="weather-core weather-core-error" role="img" aria-label="风暴水晶球静态预览">
+          <div className="weather-core-fallback" aria-hidden="true">
+            <span className="weather-core-fallback-ring" />
+            <span className="weather-core-fallback-glass" />
+            <span className="weather-core-fallback-storm" />
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 type Phase = "idle" | "requesting" | "loading" | "calibrating" | "ready" | "error";
 
@@ -846,15 +887,22 @@ export function SmileStormExperience() {
             >
               {!isExperienceVisible && (
                 <div className="prelive-preview">
-                  <Suspense
-                    fallback={
-                      <div className="weather-core weather-core-loading" role="status">
-                        <span>正在凝聚风暴</span>
-                      </div>
-                    }
-                  >
-                    <WeatherCoreHero />
-                  </Suspense>
+                  <WeatherCoreErrorBoundary>
+                    <Suspense
+                      fallback={
+                        <div className="weather-core weather-core-loading" role="status">
+                          <div className="weather-core-fallback" aria-hidden="true">
+                            <span className="weather-core-fallback-ring" />
+                            <span className="weather-core-fallback-glass" />
+                            <span className="weather-core-fallback-storm" />
+                          </div>
+                          <span>正在凝聚风暴</span>
+                        </div>
+                      }
+                    >
+                      <WeatherCoreHero />
+                    </Suspense>
+                  </WeatherCoreErrorBoundary>
                   <div className="prelive-copy">
                     <span className="live-kicker">FACE-DRIVEN LIVE · 001</span>
                     <h1 id="hero-title">

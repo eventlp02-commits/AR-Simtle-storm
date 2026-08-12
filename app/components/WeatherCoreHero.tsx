@@ -37,7 +37,13 @@ export function WeatherCoreHero() {
     const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 100);
     camera.position.set(0, 0.15, 4.15);
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
+    } catch {
+      const errorFrame = requestAnimationFrame(() => setStatus("error"));
+      return () => cancelAnimationFrame(errorFrame);
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -156,7 +162,9 @@ export function WeatherCoreHero() {
     let lastRenderedAt = 0;
     let interactionBoostUntil = 0;
     let elapsed = 0;
-    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const reducedMotionQuery = window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : { matches: false };
     const pointer = new THREE.Vector2();
     const onPointerMove = (event: PointerEvent) => {
       const bounds = mount.getBoundingClientRect();
@@ -170,14 +178,16 @@ export function WeatherCoreHero() {
       isPageVisible = document.visibilityState === "visible";
       lastRenderedAt = 0;
     };
-    const intersectionObserver = new IntersectionObserver(
-      ([entry]) => {
-        isIntersecting = entry?.isIntersecting ?? false;
-        lastRenderedAt = 0;
-      },
-      { threshold: 0.05 },
-    );
-    intersectionObserver.observe(mount);
+    const intersectionObserver = typeof IntersectionObserver === "undefined"
+      ? null
+      : new IntersectionObserver(
+          ([entry]) => {
+            isIntersecting = entry?.isIntersecting ?? false;
+            lastRenderedAt = 0;
+          },
+          { threshold: 0.05 },
+        );
+    intersectionObserver?.observe(mount);
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
       camera.aspect = Math.max(1, width) / Math.max(1, height);
@@ -218,7 +228,7 @@ export function WeatherCoreHero() {
       mount.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      intersectionObserver.disconnect();
+      intersectionObserver?.disconnect();
       disposeObject(root);
       starsGeometry.dispose();
       starsMaterial.dispose();
@@ -228,7 +238,12 @@ export function WeatherCoreHero() {
   }, []);
 
   return (
-    <div className="weather-core" aria-label="写实风暴水晶球三维预览">
+    <div className={`weather-core weather-core-${status}`} aria-label="写实风暴水晶球三维预览">
+      <div className="weather-core-fallback" aria-hidden="true">
+        <span className="weather-core-fallback-ring" />
+        <span className="weather-core-fallback-glass" />
+        <span className="weather-core-fallback-storm" />
+      </div>
       <div ref={mountRef} className="weather-core-canvas" />
       <div className="weather-core-vignette" aria-hidden="true" />
       <div className="weather-core-label">
