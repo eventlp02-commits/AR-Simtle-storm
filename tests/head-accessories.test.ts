@@ -6,6 +6,7 @@ import {
   createHeadAccessoryRig,
   headAccessoryTransform,
   retryableCachedAsset,
+  prepareWearableMaterials,
   setSunglassesMaterial,
   unloadHeadAccessoryAsset,
   unloadHeadAccessoryObject,
@@ -159,6 +160,50 @@ describe("low-poly head accessory rig", () => {
     rig.dispose();
   });
 
+  it("slowly rotates the wearable in 3D and applies the supplied fade opacity", () => {
+    const rig = createHeadAccessoryRig();
+    const material = new THREE.MeshStandardMaterial();
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    rig.sunglasses.add(new THREE.Mesh(geometry, material));
+
+    updateHeadAccessoryRig(
+      rig,
+      null,
+      null,
+      720,
+      8,
+      "HIGH",
+      false,
+      "sunglasses",
+      1_000,
+      1.5,
+      0.35,
+    );
+
+    expect(rig.sunglasses.rotation.y).not.toBeCloseTo(Math.PI, 4);
+    expect(material.opacity).toBeCloseTo(0.35, 5);
+    expect(material.transparent).toBe(true);
+    expect(material.forceSinglePass).toBe(true);
+    expect(material.depthWrite).toBe(false);
+    rig.dispose();
+  });
+
+  it("prepares the transparent shader path before a wearable is first rendered", () => {
+    const root = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial();
+    const initialVersion = material.version;
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material));
+
+    prepareWearableMaterials(root);
+
+    expect(material.transparent).toBe(true);
+    expect(material.version).toBeGreaterThan(initialVersion);
+    root.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
+    material.dispose();
+  });
+
   it("applies a lightweight shallow-black physically based material to sunglasses", () => {
     const root = new THREE.Group();
     const original = new THREE.MeshStandardMaterial({ color: 0xffffff });
@@ -202,6 +247,26 @@ describe("low-poly head accessory rig", () => {
     expect(rig.sunglasses.children).toHaveLength(0);
     expect(geometryDispose).toHaveBeenCalledOnce();
     expect(materialDispose).toHaveBeenCalledOnce();
+    rig.dispose();
+  });
+
+  it("applies fade materials again when the same wearable is loaded a second time", () => {
+    const rig = createHeadAccessoryRig();
+    const firstMaterial = new THREE.MeshStandardMaterial();
+    rig.sunglasses.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), firstMaterial));
+    updateHeadAccessoryRig(
+      rig, null, null, 720, 0, "HIGH", false, "sunglasses", 1_000, 1.8, 0.2,
+    );
+    unloadHeadAccessoryAsset(rig, "sunglasses");
+
+    const secondGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const secondMaterial = new THREE.MeshStandardMaterial();
+    rig.sunglasses.add(new THREE.Mesh(secondGeometry, secondMaterial));
+    updateHeadAccessoryRig(
+      rig, null, null, 720, 0, "HIGH", false, "sunglasses", 1_000, 1.8, 0.2,
+    );
+
+    expect(secondMaterial.opacity).toBeCloseTo(0.2, 5);
     rig.dispose();
   });
 

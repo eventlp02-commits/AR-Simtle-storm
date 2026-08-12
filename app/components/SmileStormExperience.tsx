@@ -602,6 +602,7 @@ export function SmileStormExperience() {
     );
 
     particlesRef.current.update(deltaSeconds, colliderRef.current);
+    const wearablePresentation = wearableAccessoryRef.current.getPresentation(now);
     renderer.render(
       particlesRef.current,
       viewportSize.width,
@@ -614,7 +615,13 @@ export function SmileStormExperience() {
         enableOcclusion: qualityLevel !== "LOW" && !reducedMotionRef.current,
         enableExtraGlow: qualityLevel !== "LOW" && !reducedMotionRef.current,
         activeAccessory: activeAccessoryRef.current,
-        wearableAccessory: wearableAccessoryRef.current.getActive(now),
+        wearablePresentation,
+        onWearableReady: (kind, timestampMs) => {
+          wearableAccessoryRef.current.markReady(kind, timestampMs);
+        },
+        onWearableFailed: (kind) => {
+          wearableAccessoryRef.current.markFailed(kind);
+        },
         elapsedSeconds: now / 1_000,
         quality: qualityLevel,
         reducedMotion: reducedMotionRef.current,
@@ -1086,7 +1093,7 @@ export function SmileStormExperience() {
               </section>
               <section className="live-card live-gifts-card">
                 <header><h3>AR 礼物</h3><Gift size={18} /></header>
-                <p>完整摇头可在同一侧边位置切换墨镜与帽子，每次展示 2 秒；星轨只在天气特效中低概率短暂掉落。</p>
+                <p>轻轻左右摇头即可在同一侧边位置切换墨镜与帽子；模型会缓慢自转，并在 2 秒尾段淡出。星轨只在天气特效中低概率短暂掉落。</p>
                 <div className="gift-grid"><article><span><Planet size={28} weight="duotone" /></span><b>星轨光环</b><small>天气随机</small></article></div>
                 <div className="gift-drop-policy" aria-label="稀有礼物掉落规则">
                   <span><b>6%/秒</b> 雨中稀有掉落</span><span><b>18%/次</b> 烟花稀有掉落</span><span><b>1 秒</b> 仅展示 1 秒</span>

@@ -202,9 +202,22 @@ const loadWearableTemplate = (
   return loader.loadAsync(url).then((gltf) => {
     normalizeWearable(gltf.scene);
     prepare?.(gltf.scene);
+    prepareWearableMaterials(gltf.scene);
     return gltf.scene;
   });
 };
+
+export function prepareWearableMaterials(root: THREE.Object3D) {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    materials.forEach((material) => {
+      material.transparent = true;
+      material.forceSinglePass = true;
+      material.needsUpdate = true;
+    });
+  });
+}
 
 export async function loadHeadAccessoryAsset(
   rig: HeadAccessoryRig,
@@ -243,6 +256,35 @@ const disposeObject = (root: THREE.Object3D) => {
   materials.forEach((material) => material.dispose());
 };
 
+const setObjectOpacity = (root: THREE.Object3D, opacity: number) => {
+  let materials = root.userData.smileStormFadeMaterials as THREE.Material[] | undefined;
+  if (!materials) {
+    const uniqueMaterials = new Set<THREE.Material>();
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const values = Array.isArray(object.material) ? object.material : [object.material];
+      values.forEach((material) => uniqueMaterials.add(material));
+    });
+    materials = [...uniqueMaterials];
+    root.userData.smileStormFadeMaterials = materials;
+  }
+  materials.forEach((material) => {
+    const state = material.userData.smileStormFadeState as
+      | { opacity: number; transparent: boolean; depthWrite: boolean }
+      | undefined;
+    const original = state ?? {
+      opacity: material.opacity,
+      transparent: material.transparent,
+      depthWrite: material.depthWrite,
+    };
+    material.userData.smileStormFadeState = original;
+    material.opacity = original.opacity * opacity;
+    material.transparent = opacity < 0.999 || original.transparent;
+    material.forceSinglePass = true;
+    material.depthWrite = opacity >= 0.999 && original.depthWrite;
+  });
+};
+
 export function unloadHeadAccessoryAsset(
   rig: HeadAccessoryRig,
   kind: WearableAccessoryKind,
@@ -252,6 +294,7 @@ export function unloadHeadAccessoryAsset(
     mount.remove(child);
     disposeObject(child);
   }
+  delete mount.userData.smileStormFadeMaterials;
 }
 
 export function unloadHeadAccessoryObject(object: THREE.Object3D) {
@@ -372,6 +415,8 @@ export function updateHeadAccessoryRig(
   reducedMotion: boolean,
   wearableAccessory: WearableAccessoryKind | null = null,
   viewportWidth = 0,
+  wearableElapsedSeconds = 0,
+  wearableOpacity = 1,
 ) {
   rig.root.visible = Boolean((transform && activeAccessory) || wearableAccessory);
   rig.headAnchor.visible = Boolean(transform && activeAccessory);
@@ -410,12 +455,19 @@ export function updateHeadAccessoryRig(
   rig.wearableStage.position.set(stage.centerX, viewportHeight - stage.centerY, 0);
   rig.wearableStage.rotation.set(0, 0, 0);
   const localStagePosition = new THREE.Vector3(0, 0, 1);
+  const wearableRotation = Math.PI + wearableElapsedSeconds * 1.05;
   rig.sunglasses.position.copy(localStagePosition);
   rig.sunglasses.scale.setScalar(stage.size);
-  rig.sunglasses.rotation.set(0, Math.PI, 0);
+  rig.sunglasses.rotation.set(0.04, wearableRotation, 0);
+  if (rig.sunglasses.visible && wearableOpacity < 0.999) {
+    setObjectOpacity(rig.sunglasses, wearableOpacity);
+  }
 
   rig.hat.visible = wearableAccessory === "hat";
   rig.hat.position.copy(localStagePosition);
   rig.hat.scale.setScalar(stage.size);
-  rig.hat.rotation.set(0, Math.PI, 0);
+  rig.hat.rotation.set(0.04, wearableRotation, 0);
+  if (rig.hat.visible && wearableOpacity < 0.999) {
+    setObjectOpacity(rig.hat, wearableOpacity);
+  }
 }

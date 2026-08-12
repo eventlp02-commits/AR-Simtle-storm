@@ -1,5 +1,11 @@
 export type WearableAccessoryKind = "sunglasses" | "hat";
 
+export interface WearableAccessoryPresentation {
+  kind: WearableAccessoryKind;
+  elapsedSeconds: number;
+  opacity: number;
+}
+
 interface HeadShakeOptions {
   thresholdRadians?: number;
   gestureWindowMs?: number;
@@ -17,12 +23,13 @@ export class HeadShakeController {
   private firstExtremeAtMs = 0;
   private cooldownUntilMs = 0;
   private armed = true;
+  private sawNeutral = false;
 
   constructor(options: HeadShakeOptions = {}) {
-    this.threshold = options.thresholdRadians ?? 0.25;
+    this.threshold = options.thresholdRadians ?? 0.12;
     this.windowMs = options.gestureWindowMs ?? 1_200;
     this.cooldownMs = options.cooldownMs ?? 600;
-    this.smoothing = options.smoothing ?? 0.55;
+    this.smoothing = options.smoothing ?? 0.72;
   }
 
   observe(yawRadians: number, timestampMs: number) {
@@ -30,6 +37,8 @@ export class HeadShakeController {
     this.filteredYaw = this.filteredYaw === null
       ? yawRadians
       : this.filteredYaw + (yawRadians - this.filteredYaw) * this.smoothing;
+
+    if (Math.abs(this.filteredYaw) <= this.threshold * 0.5) this.sawNeutral = true;
 
     if (!this.armed) {
       if (Math.abs(this.filteredYaw) <= this.threshold * 0.42) this.armed = true;
@@ -51,8 +60,10 @@ export class HeadShakeController {
         : 0;
     if (direction === 0) return false;
     if (this.firstDirection === 0) {
+      if (!this.sawNeutral) return false;
       this.firstDirection = direction;
       this.firstExtremeAtMs = timestampMs;
+      this.sawNeutral = false;
       return false;
     }
     if (direction === this.firstDirection) return false;
@@ -68,6 +79,7 @@ export class HeadShakeController {
     this.firstDirection = 0;
     this.firstExtremeAtMs = 0;
     this.armed = true;
+    this.sawNeutral = false;
   }
 
   reset() {
@@ -77,25 +89,70 @@ export class HeadShakeController {
 }
 
 export class WearableAccessoryController {
+  private static readonly displayDurationMs = 2_000;
+  private static readonly fadeDurationMs = 600;
   private active: WearableAccessoryKind | null = null;
+  private startedAtMs = 0;
   private expiresAtMs = 0;
+  private ready = false;
   private nextKind: WearableAccessoryKind = "sunglasses";
 
   getActive(nowMs: number) {
-    if (this.active && nowMs >= this.expiresAtMs) this.active = null;
+    if (this.active && this.ready && nowMs >= this.expiresAtMs) this.active = null;
     return this.active;
   }
 
   next(nowMs: number) {
     this.active = this.nextKind;
     this.nextKind = this.nextKind === "sunglasses" ? "hat" : "sunglasses";
-    this.expiresAtMs = nowMs + 2_000;
+    this.startedAtMs = nowMs;
+    this.expiresAtMs = 0;
+    this.ready = false;
     return this.active;
+  }
+
+  markReady(kind: WearableAccessoryKind, nowMs: number) {
+    if (this.active !== kind) return false;
+    this.startedAtMs = nowMs;
+    this.expiresAtMs = nowMs + WearableAccessoryController.displayDurationMs;
+    this.ready = true;
+    return true;
+  }
+
+  markFailed(kind: WearableAccessoryKind) {
+    if (this.active !== kind || this.ready) return false;
+    this.active = null;
+    this.startedAtMs = 0;
+    this.expiresAtMs = 0;
+    return true;
+  }
+
+  getPresentation(nowMs: number): WearableAccessoryPresentation | null {
+    const kind = this.getActive(nowMs);
+    if (!kind) return null;
+    if (!this.ready) return { kind, elapsedSeconds: 0, opacity: 0 };
+    const elapsedMs = Math.max(0, nowMs - this.startedAtMs);
+    const fadeStartMs = WearableAccessoryController.displayDurationMs
+      - WearableAccessoryController.fadeDurationMs;
+    const remainingFade = Math.min(
+      1,
+      Math.max(
+        0,
+        (WearableAccessoryController.displayDurationMs - elapsedMs)
+          / WearableAccessoryController.fadeDurationMs,
+      ),
+    );
+    const opacity = elapsedMs <= fadeStartMs
+      ? 1
+      : remainingFade * remainingFade * (3 - 2 * remainingFade);
+    return { kind, elapsedSeconds: elapsedMs / 1_000, opacity };
   }
 
   reset() {
     this.active = null;
+    this.startedAtMs = 0;
     this.expiresAtMs = 0;
+    this.ready = false;
     this.nextKind = "sunglasses";
   }
 }

@@ -9,7 +9,10 @@ import {
   type HeadAccessoryRig,
 } from "./head-accessories";
 import type { AccessoryKind } from "./accessory-drop-controller";
-import type { WearableAccessoryKind } from "./head-shake-controller";
+import type {
+  WearableAccessoryKind,
+  WearableAccessoryPresentation,
+} from "./head-shake-controller";
 import sunglassesAssetUrl from "../assets/accessories/sunglasses.optimized.glb?url";
 import hatAssetUrl from "../assets/accessories/hat.optimized.glb?url";
 import type { ParticleSystem } from "./particle-system";
@@ -137,9 +140,12 @@ interface ParticleRenderOptions {
   enableExtraGlow?: boolean;
   activeAccessory?: AccessoryKind | null;
   wearableAccessory?: WearableAccessoryKind | null;
+  wearablePresentation?: WearableAccessoryPresentation | null;
   elapsedSeconds?: number;
   quality?: "HIGH" | "MEDIUM" | "LOW";
   reducedMotion?: boolean;
+  onWearableReady?: (kind: WearableAccessoryKind, timestampMs: number) => void;
+  onWearableFailed?: (kind: WearableAccessoryKind) => void;
 }
 
 export class ParticleRenderer {
@@ -220,7 +226,11 @@ export class ParticleRenderer {
     this.renderer.compile(this.scene, this.camera);
   }
 
-  private syncWearableAsset(kind: WearableAccessoryKind | null) {
+  private syncWearableAsset(
+    kind: WearableAccessoryKind | null,
+    onReady?: (kind: WearableAccessoryKind, timestampMs: number) => void,
+    onFailed?: (kind: WearableAccessoryKind) => void,
+  ) {
     if (kind === this.desiredWearable) return;
     this.desiredWearable = kind;
     this.wearableRequest += 1;
@@ -239,7 +249,12 @@ export class ParticleRenderer {
         return;
       }
       this.loadedWearable = kind;
-    }).catch(() => undefined);
+      onReady?.(kind, performance.now());
+    }).catch(() => {
+      if (request === this.wearableRequest && this.desiredWearable === kind) {
+        onFailed?.(kind);
+      }
+    });
   }
 
   private createBatch(material: THREE.Material, capacity: number) {
@@ -339,7 +354,15 @@ export class ParticleRenderer {
     const enableOcclusion = options.enableOcclusion ?? true;
     const enableExtraGlow = options.enableExtraGlow ?? true;
     this.updateHeadOcclusion(options.headCollider ?? null, enableOcclusion);
-    this.syncWearableAsset(options.wearableAccessory ?? null);
+    const wearablePresentation = options.wearablePresentation ?? null;
+    const wearableAccessory = wearablePresentation?.kind
+      ?? options.wearableAccessory
+      ?? null;
+    this.syncWearableAsset(
+      wearableAccessory,
+      options.onWearableReady,
+      options.onWearableFailed,
+    );
     updateHeadAccessoryRig(
       this.accessoryRig,
       headAccessoryTransform(options.headCollider ?? null),
@@ -348,8 +371,10 @@ export class ParticleRenderer {
       options.elapsedSeconds ?? 0,
       options.quality ?? "HIGH",
       options.reducedMotion ?? false,
-      options.wearableAccessory ?? null,
+      wearableAccessory,
       cssWidth,
+      wearablePresentation?.elapsedSeconds ?? 0,
+      wearablePresentation?.opacity ?? 1,
     );
     const count = particles.writeRenderData(this.renderData);
     let rainCount = 0;
