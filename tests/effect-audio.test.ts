@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   EffectAudioController,
+  type AudioUnlockGate,
   type AudioFrameClock,
   type AudioTrack,
 } from "../app/lib/effect-audio";
+
+class FakeUnlockGate implements AudioUnlockGate {
+  unlockCalls = 0;
+  unlock() {
+    this.unlockCalls += 1;
+    return Promise.resolve();
+  }
+}
 
 class FakeTrack implements AudioTrack {
   loop = false;
@@ -56,11 +65,13 @@ const setup = () => {
   const rain = new FakeTrack();
   const fireworks = new FakeTrack();
   const clock = new FakeFrameClock();
+  const gate = new FakeUnlockGate();
   const controller = new EffectAudioController(
     { surprise, rain, fireworks },
     clock,
+    gate,
   );
-  return { controller, surprise, rain, fireworks, clock };
+  return { controller, surprise, rain, fireworks, clock, gate };
 };
 
 describe("EffectAudioController", () => {
@@ -114,22 +125,18 @@ describe("EffectAudioController", () => {
     expect(fireworks.playCalls).toBe(2);
   });
 
-  it("unlocks under browser-level mute without leaking or consuming the first surprise", async () => {
-    const { controller, surprise, rain, fireworks } = setup();
+  it("unlocks an audio context without ever playing the real effect tracks", async () => {
+    const { controller, surprise, rain, fireworks, gate } = setup();
 
     await expect(controller.unlock()).resolves.toBeUndefined();
-    expect(surprise.playMutedStates).toEqual([true]);
-    expect(rain.playMutedStates).toEqual([true]);
-    expect(fireworks.playMutedStates).toEqual([true]);
-    expect(surprise.muted).toBe(false);
-    expect(rain.muted).toBe(false);
-    expect(fireworks.muted).toBe(false);
+    expect(gate.unlockCalls).toBe(1);
+    expect(surprise.playCalls).toBe(0);
+    expect(rain.playCalls).toBe(0);
+    expect(fireworks.playCalls).toBe(0);
 
     controller.startFireworks();
-    expect(surprise.playCalls).toBe(2);
-    expect(fireworks.playCalls).toBe(2);
-    expect(surprise.playMutedStates.at(-1)).toBe(false);
-    expect(fireworks.playMutedStates.at(-1)).toBe(false);
+    expect(surprise.playCalls).toBe(1);
+    expect(fireworks.playCalls).toBe(1);
   });
 
   it("mutes active ambience and does not play newly triggered sounds while muted", () => {

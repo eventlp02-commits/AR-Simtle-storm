@@ -2,13 +2,13 @@ import * as THREE from "three";
 import {
   createHeadAccessoryRig,
   headAccessoryTransform,
-  loadHeadAccessoryAssets,
+  loadHeadAccessoryAsset,
+  unloadHeadAccessoryAsset,
   updateHeadAccessoryRig,
   type HeadAccessoryRig,
 } from "./head-accessories";
 import type { AccessoryKind } from "./accessory-drop-controller";
 import type { WearableAccessoryKind } from "./head-shake-controller";
-import type { CompactHeadPose } from "./vision-utils";
 import sunglassesAssetUrl from "../assets/accessories/sunglasses.optimized.glb?url";
 import hatAssetUrl from "../assets/accessories/hat.optimized.glb?url";
 import type { ParticleSystem } from "./particle-system";
@@ -136,7 +136,6 @@ interface ParticleRenderOptions {
   enableExtraGlow?: boolean;
   activeAccessory?: AccessoryKind | null;
   wearableAccessory?: WearableAccessoryKind | null;
-  headPose?: CompactHeadPose | null;
   elapsedSeconds?: number;
   quality?: "HIGH" | "MEDIUM" | "LOW";
   reducedMotion?: boolean;
@@ -177,6 +176,9 @@ export class ParticleRenderer {
   private pixelRatio = 0;
   private cssWidth = 0;
   private cssHeight = 0;
+  private desiredWearable: WearableAccessoryKind | null = null;
+  private loadedWearable: WearableAccessoryKind | null = null;
+  private wearableRequest = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement, capacity = 480) {
     this.capacity = capacity;
@@ -201,10 +203,6 @@ export class ParticleRenderer {
     this.fireworkBehindMesh.renderOrder = 1;
     this.fireworkMesh.renderOrder = 2;
     this.accessoryRig = createHeadAccessoryRig();
-    void loadHeadAccessoryAssets(this.accessoryRig, {
-      sunglasses: sunglassesAssetUrl,
-      hat: hatAssetUrl,
-    });
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.7);
     const keyLight = new THREE.DirectionalLight(0xcde8ff, 2.1);
     keyLight.position.set(-0.45, 0.8, 1);
@@ -219,6 +217,28 @@ export class ParticleRenderer {
     this.renderData = new Float32Array(capacity * PARTICLE_STRIDE);
     this.renderer.initTexture(this.trailTexture);
     this.renderer.compile(this.scene, this.camera);
+  }
+
+  private syncWearableAsset(kind: WearableAccessoryKind | null) {
+    if (kind === this.desiredWearable) return;
+    this.desiredWearable = kind;
+    this.wearableRequest += 1;
+    const request = this.wearableRequest;
+    if (this.loadedWearable) {
+      unloadHeadAccessoryAsset(this.accessoryRig, this.loadedWearable);
+      this.loadedWearable = null;
+    }
+    if (!kind) return;
+    void loadHeadAccessoryAsset(this.accessoryRig, kind, {
+      sunglasses: sunglassesAssetUrl,
+      hat: hatAssetUrl,
+    }).then(() => {
+      if (request !== this.wearableRequest || this.desiredWearable !== kind) {
+        unloadHeadAccessoryAsset(this.accessoryRig, kind);
+        return;
+      }
+      this.loadedWearable = kind;
+    }).catch(() => undefined);
   }
 
   private createBatch(material: THREE.Material, capacity: number) {
@@ -318,6 +338,7 @@ export class ParticleRenderer {
     const enableOcclusion = options.enableOcclusion ?? true;
     const enableExtraGlow = options.enableExtraGlow ?? true;
     this.updateHeadOcclusion(options.headCollider ?? null, enableOcclusion);
+    this.syncWearableAsset(options.wearableAccessory ?? null);
     updateHeadAccessoryRig(
       this.accessoryRig,
       headAccessoryTransform(options.headCollider ?? null),
@@ -327,7 +348,7 @@ export class ParticleRenderer {
       options.quality ?? "HIGH",
       options.reducedMotion ?? false,
       options.wearableAccessory ?? null,
-      options.headPose ?? null,
+      cssWidth,
     );
     const count = particles.writeRenderData(this.renderData);
     let rainCount = 0;
@@ -475,6 +496,11 @@ export class ParticleRenderer {
   }
 
   destroy() {
+    this.wearableRequest += 1;
+    if (this.loadedWearable) {
+      unloadHeadAccessoryAsset(this.accessoryRig, this.loadedWearable);
+      this.loadedWearable = null;
+    }
     this.scene.remove(
       this.rainMesh,
       this.fireworkBehindMesh,

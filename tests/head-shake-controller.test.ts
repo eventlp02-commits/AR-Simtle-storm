@@ -56,13 +56,15 @@ describe("HeadShakeController", () => {
 });
 
 describe("WearableAccessoryController", () => {
-  it("cycles none to sunglasses to hat to sunglasses and resets", () => {
+  it("cycles models at one fixed two-second display window and resets", () => {
     const controller = new WearableAccessoryController();
-    expect(controller.getActive()).toBeNull();
-    expect(controller.next()).toBe("sunglasses");
-    expect(controller.next()).toBe("hat");
-    expect(controller.next()).toBe("sunglasses");
+    expect(controller.getActive(0)).toBeNull();
+    expect(controller.next(100)).toBe("sunglasses");
+    expect(controller.getActive(2_099)).toBe("sunglasses");
+    expect(controller.getActive(2_100)).toBeNull();
+    expect(controller.next(3_000)).toBe("hat");
+    expect(controller.next(3_500)).toBe("sunglasses");
     controller.reset();
-    expect(controller.getActive()).toBeNull();
+    expect(controller.getActive(3_600)).toBeNull();
   });
 });

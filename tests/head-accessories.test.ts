@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { HeadCollider } from "../app/lib/physics";
 import {
   ACCESSORY_TRIANGLE_BUDGET,
@@ -7,6 +7,8 @@ import {
   headAccessoryTransform,
   retryableCachedAsset,
   setSunglassesMaterial,
+  unloadHeadAccessoryAsset,
+  wearableStageTransform,
   updateHeadAccessoryRig,
 } from "../app/lib/head-accessories";
 import * as THREE from "three";
@@ -68,6 +70,13 @@ describe("headAccessoryTransform", () => {
 });
 
 describe("low-poly head accessory rig", () => {
+  it("uses one face-independent side-stage transform for both models", () => {
+    expect(wearableStageTransform(1_000, 600)).toEqual({
+      centerX: 835,
+      centerY: 330,
+      size: 138,
+    });
+  });
   it("contains independent orbit and wearable mounts inside the procedural budget", () => {
     const rig = createHeadAccessoryRig();
     let measuredTriangles = 0;
@@ -120,7 +129,7 @@ describe("low-poly head accessory rig", () => {
       "HIGH",
       true,
       "sunglasses",
-      { yaw: 0.2, pitch: -0.1, roll: 0.12 },
+      1_000,
     );
 
     expect(rig.orbit.visible).toBe(true);
@@ -128,18 +137,24 @@ describe("low-poly head accessory rig", () => {
     expect(rig.orbitSpinner.rotation.z).toBe(0);
     expect(rig.sunglasses.visible).toBe(true);
     expect(rig.hat.visible).toBe(false);
-    expect(rig.root.position.x).toBeCloseTo(320, 4);
-    expect(rig.root.position.y).toBeCloseTo(470, 4);
+    expect(rig.headAnchor.position.x).toBeCloseTo(320, 4);
+    expect(rig.headAnchor.position.y).toBeCloseTo(470, 4);
     expect(rig.orbit.scale.x / transform.width).toBeCloseTo(1.18, 2);
 
-    expect(rig.root.rotation.y).toBeCloseTo(-0.2, 3);
-    expect(rig.root.rotation.x).toBeCloseTo(0.1, 3);
+    expect(rig.headAnchor.rotation.z).toBeCloseTo(0, 3);
 
-    updateHeadAccessoryRig(rig, transform, null, 720, 3, "HIGH", false, "hat");
+    updateHeadAccessoryRig(rig, transform, null, 720, 3, "HIGH", false, "hat", 1_000);
     expect(rig.root.visible).toBe(true);
     expect(rig.orbit.visible).toBe(false);
     expect(rig.sunglasses.visible).toBe(false);
     expect(rig.hat.visible).toBe(true);
+    const sunglassesPosition = rig.sunglasses.position.clone();
+    const sunglassesScale = rig.sunglasses.scale.clone();
+    expect(rig.hat.position).toEqual(sunglassesPosition);
+    expect(rig.hat.scale).toEqual(sunglassesScale);
+    expect(rig.wearableStage.position.x).toBeCloseTo(835, 3);
+    expect(rig.wearableStage.position.y).toBeCloseTo(324, 3);
+    expect(rig.occluder.visible).toBe(false);
     rig.dispose();
   });
 
@@ -171,6 +186,22 @@ describe("low-poly head accessory rig", () => {
     await expect(retryableCachedAsset(cache, "hat", load)).rejects.toThrow("offline");
     await expect(retryableCachedAsset(cache, "hat", load)).resolves.toBe("ready");
     expect(attempts).toBe(2);
+  });
+
+  it("removes and disposes wearable GPU resources after the display window", () => {
+    const rig = createHeadAccessoryRig();
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial();
+    const geometryDispose = vi.spyOn(geometry, "dispose");
+    const materialDispose = vi.spyOn(material, "dispose");
+    rig.sunglasses.add(new THREE.Mesh(geometry, material));
+
+    unloadHeadAccessoryAsset(rig, "sunglasses");
+
+    expect(rig.sunglasses.children).toHaveLength(0);
+    expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(materialDispose).toHaveBeenCalledOnce();
+    rig.dispose();
   });
 
   it("keeps the orbit face-relative proportions", () => {

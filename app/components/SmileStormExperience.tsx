@@ -535,7 +535,7 @@ export function SmileStormExperience() {
       message.pose &&
       headShakeRef.current.observe(message.pose.yaw, message.timestampMs)
     ) {
-      wearableAccessoryRef.current.next();
+      wearableAccessoryRef.current.next(message.timestampMs);
       setExpressionGuideStep(expressionGuideRef.current.observeShake());
     }
     const result = expressionRef.current.update(input, message.timestampMs);
@@ -614,8 +614,7 @@ export function SmileStormExperience() {
         enableOcclusion: qualityLevel !== "LOW" && !reducedMotionRef.current,
         enableExtraGlow: qualityLevel !== "LOW" && !reducedMotionRef.current,
         activeAccessory: activeAccessoryRef.current,
-        wearableAccessory: wearableAccessoryRef.current.getActive(),
-        headPose: headPoseRef.current,
+        wearableAccessory: wearableAccessoryRef.current.getActive(now),
         elapsedSeconds: now / 1_000,
         quality: qualityLevel,
         reducedMotion: reducedMotionRef.current,
@@ -748,8 +747,9 @@ export function SmileStormExperience() {
     for (const [delayMs, kind] of [[3_000, "sunglasses"], [10_000, "hat"]] as const) {
       replayTimersRef.current.push(
         window.setTimeout(() => {
-          while (wearableAccessoryRef.current.getActive() !== kind) {
-            wearableAccessoryRef.current.next();
+          const timestampMs = performance.now();
+          while (wearableAccessoryRef.current.getActive(timestampMs) !== kind) {
+            wearableAccessoryRef.current.next(timestampMs);
           }
           setExpressionGuideStep(expressionGuideRef.current.observeShake());
         }, delayMs),
@@ -1086,7 +1086,7 @@ export function SmileStormExperience() {
               </section>
               <section className="live-card live-gifts-card">
                 <header><h3>AR 礼物</h3><Gift size={18} /></header>
-                <p>完整摇头可切换墨镜与帽子；星轨只在天气特效中低概率短暂掉落。</p>
+                <p>完整摇头可在同一侧边位置切换墨镜与帽子，每次展示 2 秒；星轨只在天气特效中低概率短暂掉落。</p>
                 <div className="gift-grid"><article><span><Planet size={28} weight="duotone" /></span><b>星轨光环</b><small>天气随机</small></article></div>
                 <div className="gift-drop-policy" aria-label="稀有礼物掉落规则">
                   <span><b>6%/秒</b> 雨中稀有掉落</span><span><b>18%/次</b> 烟花稀有掉落</span><span><b>1 秒</b> 仅展示 1 秒</span>

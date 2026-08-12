@@ -78,17 +78,24 @@ export class HeadShakeController {
 
 export class WearableAccessoryController {
   private active: WearableAccessoryKind | null = null;
+  private expiresAtMs = 0;
+  private nextKind: WearableAccessoryKind = "sunglasses";
 
-  getActive() {
+  getActive(nowMs: number) {
+    if (this.active && nowMs >= this.expiresAtMs) this.active = null;
     return this.active;
   }
 
-  next() {
-    this.active = this.active === "sunglasses" ? "hat" : "sunglasses";
+  next(nowMs: number) {
+    this.active = this.nextKind;
+    this.nextKind = this.nextKind === "sunglasses" ? "hat" : "sunglasses";
+    this.expiresAtMs = nowMs + 2_000;
     return this.active;
   }
 
   reset() {
     this.active = null;
+    this.expiresAtMs = 0;
+    this.nextKind = "sunglasses";
   }
 }

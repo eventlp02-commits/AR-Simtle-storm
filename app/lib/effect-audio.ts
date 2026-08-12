@@ -7,10 +7,73 @@ export interface AudioTrack {
   pause(): void;
 }
 
+export class WebAudioTrack implements AudioTrack {
+  loop = false;
+  muted = false;
+  currentTime = 0;
+  private gainValue = 1;
+  private readonly gain: GainNode;
+  private readonly buffer: Promise<AudioBuffer>;
+  private source: AudioBufferSourceNode | null = null;
+  private request = 0;
+
+  constructor(
+    private readonly context: AudioContext,
+    url: string,
+  ) {
+    this.gain = context.createGain();
+    this.gain.connect(context.destination);
+    this.buffer = fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Audio download failed: ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then((data) => context.decodeAudioData(data));
+  }
+
+  get volume() {
+    return this.gainValue;
+  }
+
+  set volume(value: number) {
+    this.gainValue = Math.max(0, Math.min(1, value));
+    this.gain.gain.value = this.muted ? 0 : this.gainValue;
+  }
+
+  async play() {
+    const request = ++this.request;
+    const buffer = await this.buffer;
+    if (request !== this.request) return;
+    this.source?.stop();
+    const source = this.context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = this.loop;
+    source.connect(this.gain);
+    source.onended = () => {
+      if (this.source === source) this.source = null;
+    };
+    this.source = source;
+    this.gain.gain.value = this.muted ? 0 : this.gainValue;
+    source.start(0, Math.max(0, this.currentTime));
+  }
+
+  pause() {
+    this.request += 1;
+    if (!this.source) return;
+    this.source.stop();
+    this.source.disconnect();
+    this.source = null;
+  }
+}
+
 export interface AudioFrameClock {
   now(): number;
   request(callback: (timestampMs: number) => void): number;
   cancel(id: number): void;
+}
+
+export interface AudioUnlockGate {
+  unlock(): Promise<void> | void;
 }
 
 export interface EffectAudioTracks {
@@ -50,23 +113,11 @@ export class EffectAudioController {
   constructor(
     private readonly tracks: EffectAudioTracks,
     private readonly clock: AudioFrameClock,
+    private readonly unlockGate: AudioUnlockGate,
   ) {}
 
   async unlock() {
-    await Promise.all(Object.values(this.tracks).map(async (track) => {
-      // The media-element muted flag is enforced before decoding/output and is
-      // safer than temporarily setting volume=0, which leaked samples in WebKit.
-      track.muted = true;
-      try {
-        await track.play();
-      } catch {
-        // A later gesture may retry; audio must never block the camera.
-      } finally {
-        track.pause();
-        track.currentTime = 0;
-        track.muted = false;
-      }
-    }));
+    await this.unlockGate.unlock();
   }
 
   startRain() {
@@ -178,11 +229,8 @@ export class EffectAudioController {
 }
 
 export function createEffectAudioController(urls: EffectAudioUrls) {
-  const createTrack = (url: string) => {
-    const track = new Audio(url);
-    track.preload = "auto";
-    return track;
-  };
+  const context = new AudioContext();
+  const createTrack = (url: string) => new WebAudioTrack(context, url);
   return new EffectAudioController(
     {
       surprise: createTrack(urls.surprise),
@@ -193,6 +241,11 @@ export function createEffectAudioController(urls: EffectAudioUrls) {
       now: () => performance.now(),
       request: (callback) => requestAnimationFrame(callback),
       cancel: (id) => cancelAnimationFrame(id),
+    },
+    {
+      unlock: async () => {
+        if (context.state === "suspended") await context.resume();
+      },
     },
   );
 }
