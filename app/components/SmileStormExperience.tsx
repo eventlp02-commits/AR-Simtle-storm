@@ -67,6 +67,7 @@ import { AdaptiveQuality, type QualityLevel } from "../lib/quality-controller";
 import { percentile } from "../lib/runtime-metrics";
 import {
   blendshapesToInput,
+  inferenceFrameSize,
   landmarksToFaceOval,
   type NormalizedLandmark,
 } from "../lib/vision-utils";
@@ -610,7 +611,15 @@ export function SmileStormExperience() {
     ) {
       inferenceBusyRef.current = true;
       lastInferenceRequestRef.current = now;
-      createImageBitmap(video)
+      const inferenceSize = inferenceFrameSize(
+        video.videoWidth || 1_280,
+        video.videoHeight || 720,
+      );
+      createImageBitmap(video, {
+        resizeWidth: inferenceSize.width,
+        resizeHeight: inferenceSize.height,
+        resizeQuality: "low",
+      })
         .then((bitmap) => {
           if (!workerRef.current || !runningRef.current) {
             bitmap.close();

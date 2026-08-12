@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   blendshapesToInput,
+  compactFaceSignals,
+  inferenceFrameSize,
   landmarksToFaceOval,
+  selectFaceOvalLandmarks,
   selectPrimaryFaceIndex,
 } from "../app/lib/vision-utils";
 
@@ -79,5 +82,38 @@ describe("selectPrimaryFaceIndex", () => {
     ];
 
     expect(selectPrimaryFaceIndex([left, centered])).toBe(1);
+  });
+});
+
+describe("vision transport budget", () => {
+  it("limits a 720p inference frame to one quarter of the source pixels", () => {
+    expect(inferenceFrameSize(1_280, 720)).toEqual({ width: 640, height: 360 });
+    expect(inferenceFrameSize(640, 480)).toEqual({ width: 640, height: 480 });
+  });
+
+  it("transfers only the face oval and expression signals used by the UI", () => {
+    const landmarks = Array.from({ length: 478 }, (_, index) => ({
+      x: index / 478,
+      y: index / 956,
+      z: 0,
+    }));
+    const oval = selectFaceOvalLandmarks(landmarks);
+    const signals = compactFaceSignals({
+      mouthSmileLeft: 0.7,
+      mouthSmileRight: 0.8,
+      jawOpen: 0.6,
+      cheekSquintLeft: 0.4,
+      cheekSquintRight: 0.5,
+      unusedSignal: 1,
+    });
+
+    expect(oval).toHaveLength(36);
+    expect(Object.keys(signals)).toEqual([
+      "mouthSmileLeft",
+      "mouthSmileRight",
+      "jawOpen",
+      "cheekSquintLeft",
+      "cheekSquintRight",
+    ]);
   });
 });

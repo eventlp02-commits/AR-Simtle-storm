@@ -20,6 +20,34 @@ export const FACE_OVAL_INDICES = [
   172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
 ] as const;
 
+export const INFERENCE_MAX_EDGE = 640;
+
+export function inferenceFrameSize(width: number, height: number) {
+  const sourceWidth = Math.max(1, Math.round(width));
+  const sourceHeight = Math.max(1, Math.round(height));
+  const scale = Math.min(1, INFERENCE_MAX_EDGE / Math.max(sourceWidth, sourceHeight));
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+  };
+}
+
+export function selectFaceOvalLandmarks(landmarks: NormalizedLandmark[]) {
+  return FACE_OVAL_INDICES.map((index) => landmarks[index]).filter(
+    (landmark): landmark is NormalizedLandmark => Boolean(landmark),
+  );
+}
+
+export function compactFaceSignals(values: Record<string, number>) {
+  return {
+    mouthSmileLeft: values.mouthSmileLeft ?? 0,
+    mouthSmileRight: values.mouthSmileRight ?? 0,
+    jawOpen: values.jawOpen ?? 0,
+    cheekSquintLeft: values.cheekSquintLeft ?? 0,
+    cheekSquintRight: values.cheekSquintRight ?? 0,
+  };
+}
+
 export function blendshapesToInput(values: Record<string, number>): BlendshapeInput {
   return {
     mouthSmileLeft: values.mouthSmileLeft ?? 0,
@@ -78,8 +106,10 @@ export function landmarksToFaceOval(
   const offsetX = (transform.viewportWidth - renderedWidth) / 2;
   const offsetY = (transform.viewportHeight - renderedHeight) / 2;
 
-  return FACE_OVAL_INDICES.map((index) => landmarks[index])
-    .filter((landmark): landmark is NormalizedLandmark => Boolean(landmark))
+  const ovalLandmarks = landmarks.length === FACE_OVAL_INDICES.length
+    ? landmarks
+    : selectFaceOvalLandmarks(landmarks);
+  return ovalLandmarks
     .map((landmark) => {
       const normalizedX = transform.mirrored ? 1 - landmark.x : landmark.x;
       return {

@@ -5,7 +5,11 @@ import {
   mouthOpenRatioFromLandmarks,
   teethVisibilityFromRgba,
 } from "../lib/mouth-signals";
-import { selectPrimaryFaceIndex } from "../lib/vision-utils";
+import {
+  compactFaceSignals,
+  selectFaceOvalLandmarks,
+  selectPrimaryFaceIndex,
+} from "../lib/vision-utils";
 
 const WASM_ROOT =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
@@ -104,9 +108,9 @@ workerScope.onmessage = async (event) => {
       const result = landmarker.detectForVideo(message.bitmap, message.timestampMs);
       const primaryIndex = selectPrimaryFaceIndex(result.faceLandmarks);
       const categories = result.faceBlendshapes[primaryIndex]?.categories ?? [];
-      const blendshapes = Object.fromEntries(
+      const blendshapes = compactFaceSignals(Object.fromEntries(
         categories.map((category) => [category.categoryName, category.score]),
-      );
+      ));
       const landmarks = (result.faceLandmarks[primaryIndex] ?? []).map((landmark) => ({
         x: landmark.x,
         y: landmark.y,
@@ -124,7 +128,7 @@ workerScope.onmessage = async (event) => {
         type: "RESULT",
         timestampMs: message.timestampMs,
         inferenceMs: performance.now() - startedAt,
-        landmarks,
+        landmarks: selectFaceOvalLandmarks(landmarks),
         blendshapes,
         mouthOpenRatio,
         teethVisibility,

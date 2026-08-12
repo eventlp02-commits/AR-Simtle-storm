@@ -64,6 +64,9 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(component, /getUserMedia/);
   assert.match(component, /new Worker/);
   assert.match(component, /createImageBitmap/);
+  assert.match(component, /resizeWidth:/);
+  assert.match(component, /resizeHeight:/);
+  assert.match(component, /resizeQuality:\s*"low"/);
   assert.match(component, /import type \{ ParticleRenderer \}/);
   assert.match(component, /await import\("\.\.\/lib\/particle-renderer"\)/);
   assert.match(component, /new ResizeObserver/);
@@ -150,6 +153,8 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(worker, /outputFaceBlendshapes: true/);
   assert.match(worker, /mouthOpenRatioFromLandmarks/);
   assert.match(worker, /teethVisibility/);
+  assert.match(worker, /selectFaceOvalLandmarks/);
+  assert.match(worker, /compactFaceSignals/);
   assert.match(renderer, /new THREE\.InstancedMesh/);
   assert.match(renderer, /createHeadAccessoryRig/);
   assert.match(renderer, /headAccessoryTransform/);
