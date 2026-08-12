@@ -36,6 +36,7 @@ describe("AccessoryDropController", () => {
 
     expect(miss.triggerFireworks(200)).toBeNull();
     expect(hit.triggerFireworks(200)).toMatchObject({
+      kind: "orbit",
       source: "FIREWORKS",
       startedAtMs: 200,
       endsAtMs: 200 + ACCESSORY_DROP_DURATION_MS,
@@ -44,9 +45,9 @@ describe("AccessoryDropController", () => {
 
   it("keeps exactly one gift active for one second", () => {
     const controller = new AccessoryDropController(() => 0);
-    const drop = controller.force("hat", 400);
+    const drop = controller.force("orbit", 400);
 
-    expect(drop.kind).toBe("hat");
+    expect(drop.kind).toBe("orbit");
     expect(drop.endsAtMs - drop.startedAtMs).toBe(1_000);
     expect(controller.getActive(1_399)).toBe(drop);
     expect(controller.getActive(1_400)).toBeNull();
@@ -62,10 +63,15 @@ describe("AccessoryDropController", () => {
 
   it("reset clears both an active gift and its cooldown", () => {
     const controller = new AccessoryDropController(() => 0);
-    controller.force("sunglasses", 50);
+    controller.force("orbit", 50);
     controller.reset();
 
     expect(controller.getActive(60)).toBeNull();
     expect(controller.triggerFireworks(60)?.source).toBe("FIREWORKS");
+  });
+
+  it("exposes only the planet orbit asset", () => {
+    const sourceKinds: Array<Parameters<AccessoryDropController["force"]>[0]> = ["orbit"];
+    expect(sourceKinds).toEqual(["orbit"]);
   });
 });

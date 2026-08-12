@@ -3,7 +3,6 @@ import type { HeadCollider } from "../app/lib/physics";
 import {
   ACCESSORY_TRIANGLE_BUDGET,
   MAX_ACCESSORY_RADIAL_SEGMENTS,
-  SUNGLASSES_FACE_WIDTH_RATIO,
   createHeadAccessoryRig,
   headAccessoryTransform,
   updateHeadAccessoryRig,
@@ -66,7 +65,7 @@ describe("headAccessoryTransform", () => {
 });
 
 describe("low-poly head accessory rig", () => {
-  it("contains all three gifts inside a strict triangle budget", () => {
+  it("contains only the planet orbit inside a strict triangle budget", () => {
     const rig = createHeadAccessoryRig();
     let measuredTriangles = 0;
     rig.root.traverse((object) => {
@@ -82,15 +81,10 @@ describe("low-poly head accessory rig", () => {
         : (typedGeometry.attributes.position?.count ?? 0) / 3;
     });
 
-    expect(rig.root.getObjectByName("gift-sunglasses")).toBeTruthy();
-    expect(rig.root.getObjectByName("gift-top-hat")).toBeTruthy();
+    expect(rig.root.getObjectByName("gift-sunglasses")).toBeFalsy();
+    expect(rig.root.getObjectByName("gift-top-hat")).toBeFalsy();
     expect(rig.root.getObjectByName("gift-planet-orbit")).toBeTruthy();
     expect(rig.root.getObjectByName("head-depth-occluder")).toBeTruthy();
-    expect(geometryDepth(rig.root.getObjectByName("sunglasses-left-lens"))).toBeGreaterThan(0.02);
-    expect(rig.root.getObjectByName("sunglasses-curved-bridge")).toBeTruthy();
-    expect(rig.root.getObjectByName("sunglasses-left-nose-pad")).toBeTruthy();
-    expect(rig.root.getObjectByName("sunglasses-right-nose-pad")).toBeTruthy();
-    expect(geometryDepth(rig.root.getObjectByName("hat-crown"))).toBeGreaterThan(0.1);
     expect(geometryDepth(rig.root.getObjectByName("orbit-ring"))).toBeGreaterThan(0.02);
     expect(measuredTriangles).toBeLessThanOrEqual(ACCESSORY_TRIANGLE_BUDGET);
     expect(rig.triangleCount).toBe(Math.round(measuredTriangles));
@@ -109,16 +103,6 @@ describe("low-poly head accessory rig", () => {
     rig.dispose();
   });
 
-  it("places front frames before the head and temples behind it", () => {
-    const rig = createHeadAccessoryRig();
-    const lens = rig.root.getObjectByName("sunglasses-left-lens");
-    const temple = rig.root.getObjectByName("sunglasses-left-temple");
-
-    expect(lens?.position.z).toBeGreaterThan(rig.occluder.position.z);
-    expect(temple?.position.z).toBeLessThan(rig.occluder.position.z);
-    rig.dispose();
-  });
-
   it("shows only one active gift and freezes orbital motion for reduced motion", () => {
     const rig = createHeadAccessoryRig();
     const transform = headAccessoryTransform(ellipseCollider());
@@ -134,8 +118,6 @@ describe("low-poly head accessory rig", () => {
       true,
     );
 
-    expect(rig.sunglasses.visible).toBe(false);
-    expect(rig.hat.visible).toBe(false);
     expect(rig.orbit.visible).toBe(true);
     expect(rig.occluder.visible).toBe(true);
     expect(rig.orbitSpinner.rotation.z).toBe(0);
@@ -148,22 +130,13 @@ describe("low-poly head accessory rig", () => {
     rig.dispose();
   });
 
-  it("keeps realistic face-relative proportions", () => {
+  it("keeps the orbit face-relative proportions", () => {
     const rig = createHeadAccessoryRig();
     const transform = headAccessoryTransform(ellipseCollider());
     if (!transform) throw new Error("expected transform");
 
-    updateHeadAccessoryRig(rig, transform, "sunglasses", 720, 0, "HIGH", false);
-    expect(SUNGLASSES_FACE_WIDTH_RATIO).toBeCloseTo(0.9, 2);
-    expect(rig.sunglasses.scale.x / transform.width).toBeCloseTo(
-      SUNGLASSES_FACE_WIDTH_RATIO,
-      2,
-    );
-    expect(rig.sunglasses.position.y / transform.height).toBeCloseTo(0.1, 2);
-
-    updateHeadAccessoryRig(rig, transform, "hat", 720, 0, "HIGH", false);
-    expect(rig.hat.scale.x / transform.width).toBeCloseTo(0.68, 2);
-    expect(rig.hat.position.y / transform.height).toBeCloseTo(0.43, 2);
+    updateHeadAccessoryRig(rig, transform, "orbit", 720, 0, "HIGH", false);
+    expect(rig.orbit.scale.x / transform.width).toBeCloseTo(1.18, 2);
     rig.dispose();
   });
 });

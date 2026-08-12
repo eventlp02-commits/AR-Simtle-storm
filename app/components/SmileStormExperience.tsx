@@ -15,7 +15,6 @@ import { CalendarDots } from "@phosphor-icons/react/CalendarDots";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { Compass } from "@phosphor-icons/react/Compass";
 import { CornersOut } from "@phosphor-icons/react/CornersOut";
-import { CowboyHat as TopHat } from "@phosphor-icons/react/CowboyHat";
 import { Crown } from "@phosphor-icons/react/Crown";
 import { Gift } from "@phosphor-icons/react/Gift";
 import { Heart } from "@phosphor-icons/react/Heart";
@@ -29,7 +28,6 @@ import { SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
 import { SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
 import { Star } from "@phosphor-icons/react/Star";
 import { StopCircle } from "@phosphor-icons/react/StopCircle";
-import { Sunglasses } from "@phosphor-icons/react/Sunglasses";
 import { Users } from "@phosphor-icons/react/Users";
 import { VideoCamera } from "@phosphor-icons/react/VideoCamera";
 import surpriseAudioUrl from "../assets/audio/surprise.mp3?url";
@@ -175,8 +173,6 @@ const statusCopy: Record<EffectState, { label: string; detail: string }> = {
 };
 
 const accessoryDropCopy: Record<AccessoryKind, string> = {
-  sunglasses: "鎏金墨镜",
-  hat: "午夜礼帽",
   orbit: "星轨光环",
 };
 
@@ -260,7 +256,6 @@ export function SmileStormExperience() {
   const runningRef = useRef(false);
   const accessoryDropRef = useRef(new AccessoryDropController());
   const activeAccessoryRef = useRef<AccessoryKind | null>(null);
-  const debugAccessoryIndexRef = useRef(0);
 
   const setPhaseState = (next: Phase) => {
     phaseRef.current = next;
@@ -433,10 +428,7 @@ export function SmileStormExperience() {
   };
 
   const launchDebugAccessory = () => {
-    const kinds: AccessoryKind[] = ["sunglasses", "hat", "orbit"];
-    const kind = kinds[debugAccessoryIndexRef.current % kinds.length];
-    debugAccessoryIndexRef.current += 1;
-    syncAccessoryDrop(accessoryDropRef.current.force(kind, performance.now()));
+    syncAccessoryDrop(accessoryDropRef.current.force("orbit", performance.now()));
   };
 
   const launchDebugFireworks = () => {
@@ -1075,12 +1067,6 @@ export function SmileStormExperience() {
               <header><h3>AR 礼物</h3><Gift size={18} /></header>
               <p>不需点选，只会在天气特效中低概率短暂掉落。</p>
               <div className="gift-grid">
-                <article>
-                  <span><Sunglasses size={28} weight="duotone" /></span><b>鎏金墨镜</b><small>雨中随机</small>
-                </article>
-                <article>
-                  <span><TopHat size={28} weight="duotone" /></span><b>午夜礼帽</b><small>烟花随机</small>
-                </article>
                 <article>
                   <span><Planet size={28} weight="duotone" /></span><b>星轨光环</b><small>天气随机</small>
                 </article>

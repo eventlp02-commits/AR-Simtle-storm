@@ -261,7 +261,7 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 .live-info-card dd.is-live { display: inline-flex; align-items: center; gap: 7px; color: #2675ed; font-weight: 700; }
 .live-info-card dd.is-live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2f7df4; box-shadow: 0 0 0 4px rgba(47,125,244,.1); }
 .live-gifts-card > p { margin: -12px 0 18px; color: #8d96a6; font-size: 11px; }
-.gift-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.gift-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; }
 .gift-grid article { min-width: 0; min-height: 112px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px solid #e5eaf3; border-radius: 19px; color: #697386; background: rgba(255,255,255,.7); }
 .gift-grid article span { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 15px; color: #2f7df4; background: white; box-shadow: 0 8px 18px rgba(54,85,137,.1); }
 .gift-grid article b { max-width: 100%; font-size: 10px; white-space: nowrap; }

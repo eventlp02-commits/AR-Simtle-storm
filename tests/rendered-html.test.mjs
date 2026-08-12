@@ -83,9 +83,12 @@ test("ships the local vision, WebGL and accessibility implementation", async () 
   assert.match(component, /@phosphor-icons\/react/);
   assert.doesNotMatch(component, /from "@phosphor-icons\/react"/);
   assert.match(component, /@phosphor-icons\/react\/Broadcast/);
-  for (const icon of ["Gift", "Sunglasses", "Planet", "TopHat"]) {
+  for (const icon of ["Gift", "Planet"]) {
     assert.match(component, new RegExp(`\\b${icon}\\b`));
   }
+  assert.doesNotMatch(component, /\bSunglasses\b/);
+  assert.doesNotMatch(component, /\bTopHat\b/);
+  assert.doesNotMatch(component, /鎏金墨镜|午夜礼帽/);
   assert.doesNotMatch(component, /aria-pressed=\{accessories\./);
   assert.doesNotMatch(component, /const \[accessories, setAccessories\]/);
   assert.doesNotMatch(component, /toggleAccessory/);
